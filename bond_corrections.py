@@ -49,7 +49,6 @@ class HEADER:
         self.atomsLine = self.check_file()
         print(f'number of header lines: {self.atomsLine}\n')
         self.read_header()
-        pprint(self.PairCoeff)
 
 
     def check_file(self) -> int:
@@ -96,21 +95,25 @@ class HEADER:
                     Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff = True, False, False, False, False
                 if line.strip().startswith("Pair"):
                     Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff = False, True, False, False, False
-                if line.strip().startswith("Bond"):
+                if line.strip().startswith("Bond Coeffs"):
                     Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff = False, False, True, False, False
-                if line.strip().startswith("Angle"):
+                if line.strip().startswith("Angle Coeffs"):
                     Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff = False, False, False, True, False
-                if line.strip().startswith("Dihedral"):
+                if line.strip().startswith("Dihedral Coeffs"):
                     Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff = False, False, False, False, True
                 if line.strip():
                     if Masses: self.get_masses(line.strip(), 'Masses')
                     if PairCoeff: self.get_pair_coeff(line.strip(), 'Pair')
-                    # if Masses: self.get_masses(line.strip(), 'Masses')
-                    # if Masses: self.get_masses(line.strip(), 'Masses')
-                # if linecount > self.atomsLine and not Masses: 
-                    # print(linecount, Masses)
-                    # err = FILEERROR()
-                    # exit(f'{err.__doc__}')
+                    if BondCoeff: self.get_bond_coeff(line.strip(), 'Bond')
+                    if AngleCoeff: self.get_angle_coeff(line.strip(), 'Angle')
+                    if DihedralCoeff: self.get_dihedral_coeff(line.strip(), 'Dihedral')
+                if linecount > self.atomsLine: 
+                    if not Masses:
+                        # print(linecount)
+                        # print(linecount, Masses)
+                        # err = FILEERROR()
+                        # print(f'{err.__doc__}')
+                        break
                 if not line: break
 
     def get_axis_lim(self, lim):
@@ -130,6 +133,27 @@ class HEADER:
             line = line.split(' ')
             typ = line[0]
             self.PairCoeff[typ]=dict(style=line[1], coeff=line[2:])
+        else: pass
+    
+    def get_bond_coeff(self, line, check):
+        if check not in line:
+            line = line.split(' ')
+            typ = line[0]
+            self.BondCoeff[typ]=dict(style=line[1], coeff=line[2:])
+        else: pass
+        
+    def get_angle_coeff(self, line, check):
+        if check not in line:
+            line = line.split(' ')
+            typ = line[0]
+            self.AngleCoeff[typ]=dict(style=line[1], coeff=line[2:])
+        else: pass
+    
+    def get_dihedral_coeff(self, line, check):
+        if check not in line:
+            line = line.split(' ')
+            typ = line[0]
+            self.DihedralCoeff[typ]=dict(style=line[1], coeff=line[2:])
         else: pass
 
 
@@ -175,4 +199,4 @@ if __name__ == "__main__":
         exit(f'\nONE INPUT IS RWUIRED\n{doc.__doc__}')
     DATAFILE = sys.argv[1]
     header = HEADER()
-    print(header.__dict__)
+    pprint(header.__dict__)
