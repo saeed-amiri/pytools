@@ -118,12 +118,6 @@ class HEADER:
                         break
                 if not line: break
 
-    def get_body(self):
-        
-        with open(DATAFILE, 'r') as f:
-
-            pass
-    
     def get_axis_lim(self, lim) -> list:
         lim = lim.split(' ')
         lim = [item for item in lim if item]
@@ -167,6 +161,84 @@ class HEADER:
 
 
 
+class BODY():
+    """
+    read the data for atoms,velocities, bonds, angles, dihedrals
+    """
+
+    def __init__(self) -> None:
+        pass
+    
+    def read_body(self):
+        self.Atoms, self.Velocities, self.Bonds, self.Angles, self.Dihedrals = dict(), dict(), dict(), dict(), dict()
+        Atoms, Velocities, Bonds, Angles, Dihedrals = False, False, False, False, False
+        with open(DATAFILE, 'r') as f:
+            while True:
+                line = f.readline()
+                if line.strip().startswith('Atoms'):
+                    Atoms, Velocities, Bonds, Angles, Dihedrals = True, False, False, False, False
+                if line.strip().startswith('Velocities'):
+                    Atoms, Velocities, Bonds, Angles, Dihedrals = False, True, False, False, False
+                if line.strip().startswith('Bonds'):
+                    Atoms, Velocities, Bonds, Angles, Dihedrals = False, False, True, False, False
+                if line.strip().startswith('Angles'):
+                    Atoms, Velocities, Bonds, Angles, Dihedrals = False, False, False, True, False
+                if line.strip().startswith('Dihedrals'):
+                    Atoms, Velocities, Bonds, Angles, Dihedrals = False, False, False, False, True
+                if line.strip():
+                    if Atoms :self.get_atoms(line.strip())
+                    if Velocities: self.get_velocities(line.strip())
+                    if Bonds: self.get_bonds(line.strip())
+                    if Angles: self.get_angles(line.strip())
+                    if Dihedrals: self.get_dihedrals(line.strip())
+                if not line: break
+    
+    def get_atoms(self, line) -> dict:
+        if 'Atoms' not in line:
+            line = line.split(" ")
+            line = [item for item in line if item]
+            atom_id = int(line[0])
+            i_mol=int(line[1]); i_typ=int(line[2]); i_charg=float(line[3]) 
+            i_x=float(line[4]);i_y=float(line[5]); i_z=float(line[6])
+            i_nx=int(line[7]); i_ny=int(line[8]); i_nz=int(line[9])
+            self.Atoms[atom_id]=dict(mol=i_mol, typ=i_typ, charg=i_charg, x=i_x,y=i_y, z=i_z, nx=i_nx, ny=i_ny, nz=i_nz)
+        else: pass
+
+    def get_velocities(self, line) -> dict:
+        if 'Velocities' not in line:
+            line = line.split(" ")
+            line = [item for item in line if item]
+            atom_id = int(line[0])
+            i_vx = float(line[1]); i_vy = float(line[2]); i_vz = float(line[3])
+            self.Velocities[atom_id] = dict(vx = i_vx, vy = i_vy, vz = i_vz)
+        else: pass
+    
+    def get_bonds(self, line) -> dict:
+        if 'Bonds' not in line:
+            line = line.split(" ")
+            line = [int(item) for item in line if item]
+            bond_id = line[0]
+            i_typ = line[1]; i_ai = line[2]; i_aj = line[3]
+            self.Bonds[bond_id] = dict(typ = i_typ, ai = i_ai, aj = i_aj)
+        else: pass
+
+    def get_angles(self, line) -> dict:
+        if "Angles" not in line:
+            line = line.split(" ")
+            line = [int(item) for item in line if item]
+            angle_id = line[0]
+            i_typ = line[1]; i_ai = line[2]; i_aj = line[3]; i_ak = line[4]
+            self.Angles[angle_id] = dict(typ = i_typ, ai = i_ai, aj = i_aj, ak = i_ak)
+
+    def get_dihedrals(self, line) -> dict:
+        if "Dihedrals" not in line:
+            line = line.split(" ")
+            line = [int(item) for item in line if item]
+            dihedrals_id = line[0]
+            i_typ = line[1]; i_ai = line[2]; i_aj = line[3]; i_ak = line[4]; i_ah = line[5]
+            self.Dihedrals[dihedrals_id] = dict(typ = i_typ, ai = i_ai, aj = i_aj, ak = i_ak, ah = i_ah)
+
+        
         
 
 class ATOMS:
@@ -208,3 +280,6 @@ if __name__ == "__main__":
     DATAFILE = sys.argv[1]
     header = HEADER()
     pprint(header.__dict__)
+    body = BODY()
+    body.read_body()
+    # pprint(body.Dihedrals)
