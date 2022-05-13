@@ -70,6 +70,8 @@ class HEADER:
                     exit("wrong data file\n")
         return atomsLine
 
+    
+
     def read_header(self):
         """read header to get all the available info"""
         self.Masses, self.PairCoeff, self.BondCoeff, self.AngleCoeff, self.DihedralCoeff=dict(),dict(),dict(),dict(),dict()
@@ -116,40 +118,46 @@ class HEADER:
                         break
                 if not line: break
 
-    def get_axis_lim(self, lim):
+    def get_body(self):
+        
+        with open(DATAFILE, 'r') as f:
+
+            pass
+    
+    def get_axis_lim(self, lim) -> list:
         lim = lim.split(' ')
         lim = [item for item in lim if item]
         return lim
     
-    def get_masses(self, line, check):
+    def get_masses(self, line, check) -> dict:
         if check not in line: 
             typ = line.split(' ')[0]
             mass = float(line.split(' ')[1])
             self.Masses[typ]=mass
         else: pass
 
-    def get_pair_coeff(self, line, check):
+    def get_pair_coeff(self, line, check)-> dict:
         if check not in line: 
             line = line.split(' ')
             typ = line[0]
             self.PairCoeff[typ]=dict(style=line[1], coeff=line[2:])
         else: pass
     
-    def get_bond_coeff(self, line, check):
+    def get_bond_coeff(self, line, check)-> dict:
         if check not in line:
             line = line.split(' ')
             typ = line[0]
             self.BondCoeff[typ]=dict(style=line[1], coeff=line[2:])
         else: pass
         
-    def get_angle_coeff(self, line, check):
+    def get_angle_coeff(self, line, check)-> dict:
         if check not in line:
             line = line.split(' ')
             typ = line[0]
             self.AngleCoeff[typ]=dict(style=line[1], coeff=line[2:])
         else: pass
     
-    def get_dihedral_coeff(self, line, check):
+    def get_dihedral_coeff(self, line, check)-> dict:
         if check not in line:
             line = line.split(' ')
             typ = line[0]
