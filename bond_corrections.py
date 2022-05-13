@@ -1,5 +1,8 @@
+from email.header import Header
 import os, sys, re
 from pprint import pprint
+from tabnanny import check
+from matplotlib.pyplot import cla
 import pandas as pd
 import numpy as np
 
@@ -75,7 +78,7 @@ class HEADER:
     def read_header(self):
         """read header to get all the available info"""
         self.Masses, self.PairCoeff, self.BondCoeff, self.AngleCoeff, self.DihedralCoeff=dict(),dict(),dict(),dict(),dict()
-        Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff=False, False, False, False, False
+        Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms=False, False, False, False, False, False
         linecount = 0
         with open(DATAFILE, 'r') as f:
             while True:
@@ -94,33 +97,29 @@ class HEADER:
                 if line.strip().endswith("zhi"): self.Zlim = self.get_axis_lim(line.strip().split('zlo')[0])
 
                 if line.strip().startswith("Masses"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff = True, False, False, False, False
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms = True, False, False, False, False, False
                 if line.strip().startswith("Pair"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff = False, True, False, False, False
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms = False, True, False, False, False, False
                 if line.strip().startswith("Bond Coeffs"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff = False, False, True, False, False
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms = False, False, True, False, False, False
                 if line.strip().startswith("Angle Coeffs"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff = False, False, False, True, False
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms = False, False, False, True, False, False
                 if line.strip().startswith("Dihedral Coeffs"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff = False, False, False, False, True
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms = False, False, False, False, True, False
+                if line.strip().startswith("Atoms"): 
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms = False, False, False, False, False, True
                 if line.strip():
                     if Masses: self.get_masses(line.strip(), 'Masses')
                     if PairCoeff: self.get_pair_coeff(line.strip(), 'Pair')
                     if BondCoeff: self.get_bond_coeff(line.strip(), 'Bond')
                     if AngleCoeff: self.get_angle_coeff(line.strip(), 'Angle')
                     if DihedralCoeff: self.get_dihedral_coeff(line.strip(), 'Dihedral')
-                if linecount > self.atomsLine: 
-                    if not Masses:
-                        # print(linecount)
-                        # print(linecount, Masses)
-                        # err = FILEERROR()
-                        # print(f'{err.__doc__}')
-                        break
+                if Atoms: break
                 if not line: break
 
     def get_axis_lim(self, lim) -> list:
         lim = lim.split(' ')
-        lim = [item for item in lim if item]
+        lim = [float(item) for item in lim if item]
         return lim
     
     def get_masses(self, line, check) -> dict:
@@ -200,7 +199,7 @@ class BODY():
             atom_id = int(line[0])
             i_mol=int(line[1]); i_typ=int(line[2]); i_charg=float(line[3]) 
             i_x=float(line[4]);i_y=float(line[5]); i_z=float(line[6])
-            i_nx=int(line[7]); i_ny=int(line[8]); i_nz=int(line[9])
+            i_nx=str(line[7]); i_ny=str(line[8]); i_nz=str(line[9])
             self.Atoms[atom_id]=dict(mol=i_mol, typ=i_typ, charg=i_charg, x=i_x,y=i_y, z=i_z, nx=i_nx, ny=i_ny, nz=i_nz)
         else: pass
 
@@ -238,10 +237,42 @@ class BODY():
             i_typ = line[1]; i_ai = line[2]; i_aj = line[3]; i_ak = line[4]; i_ah = line[5]
             self.Dihedrals[dihedrals_id] = dict(typ = i_typ, ai = i_ai, aj = i_aj, ak = i_ak, ah = i_ah)
 
-    
+class UPDATE:
+    """
+    Update data, checking the bonds
+    """
+    def __init__(self, Bonds, Atoms, header) -> None:
+        self.Bonds = Bonds
+        self.Atoms = Atoms
+        self.header = header
+        self.get_sizes()
+        del Bonds, Atoms, header
 
+    def get_sizes(self):
+        self.boxx = self.header.Xlim[1]-self.header.Xlim[0]
+        self.boxy = self.header.Ylim[1]-self.header.Ylim[0]
+        self.boxz = self.header.Zlim[1]-self.header.Zlim[0]
+        print(self.boxx, self.boxy, self.boxz)
 
+    def check_bonds(self):
+        for bond in range(1,len(self.Bonds)+1):
+            ai = self.Bonds[bond]['ai']
+            aj = self.Bonds[bond]['aj']
+            self.check_coords(ai, aj)
 
+    def check_coords(self, ai, aj):
+        axis = ['x', 'y', 'z']
+        lims = [self.boxx, self.boxy, self.boxz]
+        for ax, lim in zip(axis, lims):
+            xi = self.Atoms[ai][ax]
+            xj = self.Atoms[aj][ax]
+            distance = np.abs(xi - xj)
+            if distance > lim*0.5:
+                print(ai, aj, ax, xi, xj, distance)
+                if xi < xj: xi += lim
+                else: xj += lim
+            self.Atoms[ai][ax] = xi
+            self.Atoms[aj][ax] = xj
 
 if __name__ == "__main__":
     # check the input file 
@@ -250,6 +281,13 @@ if __name__ == "__main__":
         exit(f'\nONE INPUT IS RWUIRED\n{doc.__doc__}')
     DATAFILE = sys.argv[1]
     header = HEADER()
-    pprint(header.__dict__)
+    # pprint(header.__dict__)
     body = BODY()
     body.read_body()
+    update = UPDATE(body.Bonds, body.Atoms, header)
+    update.check_bonds()
+    # pprint(update.Atoms)
+    df = pd.DataFrame(update.Atoms).T
+    # print(df.to_string())
+    df.to_csv('df', index=True, header=None, sep=' ')
+
