@@ -238,36 +238,7 @@ class BODY():
             i_typ = line[1]; i_ai = line[2]; i_aj = line[3]; i_ak = line[4]; i_ah = line[5]
             self.Dihedrals[dihedrals_id] = dict(typ = i_typ, ai = i_ai, aj = i_aj, ak = i_ak, ah = i_ah)
 
-        
-        
-
-class ATOMS:
-    """
-    read atoms coordinates
-    """
-    def __init__(self) -> None:
-        pass
-
-class BONDS:
-    """
-    read bonds
-    """
-    def __init__(self) -> None:
-        pass
-
-class ANGLES:
-    """
-    read angles
-    """
-    def __init__(self) -> None:
-        pass
-
-class DIHEDRALS:
-    """
-    read dihedrals
-    """
-    def __init__(self) -> None:
-        pass
+    
 
 
 
@@ -282,4 +253,3 @@ if __name__ == "__main__":
     pprint(header.__dict__)
     body = BODY()
     body.read_body()
-    # pprint(body.Dihedrals)
