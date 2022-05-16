@@ -1,8 +1,4 @@
-from email.header import Header
 import os, sys, re
-from pprint import pprint
-from tabnanny import check
-from matplotlib.pyplot import cla
 import pandas as pd
 import numpy as np
 
@@ -36,7 +32,7 @@ class DOC:
     
     usages: {sys.argv[0]} system.data
     """
-
+MOLNUMBER = 32
 class FILEERROR:
     """
     there is problem in the header of the DATAFILE,
@@ -245,6 +241,7 @@ class UPDATE:
         self.Bonds = Bonds
         self.Atoms = Atoms
         self.header = header
+        # self.check_bonds_mol()
         self.get_sizes()
         del Bonds, Atoms, header
 
@@ -252,13 +249,49 @@ class UPDATE:
         self.boxx = self.header.Xlim[1]-self.header.Xlim[0]
         self.boxy = self.header.Ylim[1]-self.header.Ylim[0]
         self.boxz = self.header.Zlim[1]-self.header.Zlim[0]
-        print(self.boxx, self.boxy, self.boxz)
 
     def check_bonds(self):
         for bond in range(1,len(self.Bonds)+1):
             ai = self.Bonds[bond]['ai']
             aj = self.Bonds[bond]['aj']
             self.check_coords(ai, aj)
+        for bond in range(1,len(self.Bonds)+1):
+            ai = self.Bonds[bond]['ai']
+            aj = self.Bonds[bond]['aj']
+            self.check_coords(ai, aj)
+        for bond in range(1,len(self.Bonds)+1):
+            ai = self.Bonds[bond]['ai']
+            aj = self.Bonds[bond]['aj']
+            self.check_coords(ai, aj)
+        for bond in range(1,len(self.Bonds)+1):
+            ai = self.Bonds[bond]['ai']
+            aj = self.Bonds[bond]['aj']
+            self.check_coords(ai, aj)
+        for bond in range(1,len(self.Bonds)+1):
+            ai = self.Bonds[bond]['ai']
+            aj = self.Bonds[bond]['aj']
+            self.check_coords(ai, aj)
+        for bond in range(1,len(self.Bonds)+1):
+            ai = self.Bonds[bond]['ai']
+            aj = self.Bonds[bond]['aj']
+            self.check_coords(ai, aj)
+        for bond in range(1,len(self.Bonds)+1):
+            ai = self.Bonds[bond]['ai']
+            aj = self.Bonds[bond]['aj']
+            self.check_coords(ai, aj)
+        for bond in range(1,len(self.Bonds)+1):
+            ai = self.Bonds[bond]['ai']
+            aj = self.Bonds[bond]['aj']
+            self.check_coords(ai, aj)
+        self.df = pd.DataFrame(self.Atoms).T
+        self.check_box()
+
+    def check_box(self):
+        self.XMIN = np.min(self.df.x); self.XMAX = np.max(self.df.x)
+        self.YMIN = np.min(self.df.y); self.YMAX = np.max(self.df.y)
+        self.ZMIN = np.min(self.df.z); self.ZMAX = np.max(self.df.z)
+
+            
 
     def check_coords(self, ai, aj):
         axis = ['x', 'y', 'z']
@@ -267,12 +300,26 @@ class UPDATE:
             xi = self.Atoms[ai][ax]
             xj = self.Atoms[aj][ax]
             distance = np.abs(xi - xj)
-            if distance > lim*0.5:
-                print(ai, aj, ax, xi, xj, distance)
-                if xi < xj: xi += lim
-                else: xj += lim
-            self.Atoms[ai][ax] = xi
-            self.Atoms[aj][ax] = xj
+            if self.Atoms[ai]['mol'] != self.Atoms[aj]['mol']:
+                exit(f'DIFFRENT MOLECULE ID{ai}-{aj}')
+            else:    
+                if distance > lim*0.25:
+                    if xi < xj: 
+                        xi += lim
+                    else: 
+                        xj += lim
+                    # print(ax, ai, aj)
+                    self.Atoms[ai][ax] = xi
+                    self.Atoms[aj][ax] = xj
+
+    def check_bonds_mol(self):
+        NUM_MOL = int(self.header.NATOMS/32)
+        print(NUM_MOL)
+        for m in range(1,NUM_MOL+1):
+            mol_df = self.df.groupby(self.df.mol).get_group(m)
+            print(mol_df)
+
+
 
 if __name__ == "__main__":
     # check the input file 
@@ -280,14 +327,26 @@ if __name__ == "__main__":
         doc = DOC()
         exit(f'\nONE INPUT IS RWUIRED\n{doc.__doc__}')
     DATAFILE = sys.argv[1]
+    OUTEX = DATAFILE.split('.')[0]
     header = HEADER()
-    # pprint(header.__dict__)
     body = BODY()
     body.read_body()
     update = UPDATE(body.Bonds, body.Atoms, header)
     update.check_bonds()
-    # pprint(update.Atoms)
     df = pd.DataFrame(update.Atoms).T
-    # print(df.to_string())
-    df.to_csv('df', index=True, header=None, sep=' ')
+    df = df.sort_index(axis=0)
+    df.to_csv(f'atoms.{OUTEX}', index=True, header=None, sep=' ')
+    df = pd.DataFrame(update.Bonds).T
+    df = df.sort_index(axis=0)
+    df.to_csv(f'bonds.{OUTEX}', index=True, header=None, sep=' ')
+    df = pd.DataFrame(body.Angles).T
+    df.sort_index(axis=0)
+    df.to_csv(f'angles.{OUTEX}', index=True, header=None, sep=' ')
+    df = pd.DataFrame(body.Dihedrals).T
+    df.sort_index(axis=0)
+    df.to_csv(f'dihedrals.{OUTEX}', index=True, header=None, sep=' ')
 
+    with open(f'box.{OUTEX}', 'w') as f:
+        f.write(f'{update.XMIN} {update.XMAX} xlo xhi\n')
+        f.write(f'{update.YMIN} {update.YMAX} ylo yhi\n')
+        f.write(f'{update.ZMIN} {update.ZMAX} zlo zhi\n')
