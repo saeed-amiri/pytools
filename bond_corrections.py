@@ -1,6 +1,7 @@
 import sys
 import pandas as pd
 import numpy as np
+import re
 
 
 class DOC:
@@ -15,21 +16,21 @@ class DOC:
     component.
         - It read DATAFILE and check the header.
         - write the number of header lines in the screen
-        - read atoms 
+        - read atoms
         - read the bonds, angles, angles, dihedrals, ...
 
     The script is wrote for DATAFILE which have hybrid style, i.e.:
-        
+
     Pair Coeffs # lj/cut/coul/long
 
     1 lj/cut/coul/long 0.1553 3.166
     2 lj/cut/coul/long 0 0
-    
+
     Bond Coeffs # harmonic
 
     1 harmonic 600 1
     2 harmonic 268 1.526
-    
+
     Angle Coeffs # harmonic
 
     1 harmonic 75 109.47
@@ -39,7 +40,7 @@ class DOC:
 
     1 opls 1.3 -0.05 0.2 0
     2 opls 0 0 0.3 0
-    
+
     usages: {sys.argv[0]} system.data
 
     2022.05.14
@@ -47,7 +48,7 @@ class DOC:
 
     The problems:
         - many repeated loop the correct the data
-        - read all the data, we only need a skin in the size of 
+        - read all the data, we only need a skin in the size of
             chain length of the molecule
         - output to be readable by both OVITO and LAMMPS
     01.06.2022
@@ -55,11 +56,14 @@ class DOC:
 
 
 MOLNUMBER = 32
+
+
 class FILEERROR:
     """
     there is problem in the header of the DATAFILE,
     maybe long header!\n
     """
+
 
 class HEADER:
     """
@@ -67,7 +71,7 @@ class HEADER:
     check the number of the lines, atom, bond ... informations
     get the box , pairs, ... coefficents
     """
-    
+
     def __init__(self) -> None:
         self.atomsLine = 0
         self.atomsLine = self.check_file()
@@ -75,8 +79,15 @@ class HEADER:
         self.read_header()
 
     def check_file(self) -> int:
-        FILECHECK = False
+        """ Check header
+        input:
+            - DATAFILE (lammps data file)
+        output:
+            - number of header lines
+        """
+        # An integer to prevent overreading in case of header bugs
         MAXHEADER = 1000
+        # track the number of lines in the hedaer
         linecount = 0
         with open(DATAFILE, 'r') as f:
             while True:
@@ -93,61 +104,91 @@ class HEADER:
                     exit("wrong data file\n")
         return atomsLine
 
-    
-
     def read_header(self):
-        """read header to get all the available info"""
-        self.Masses, self.PairCoeff, self.BondCoeff, self.AngleCoeff, self.DihedralCoeff=dict(),dict(),dict(),dict(),dict()
-        Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms=False, False, False, False, False, False
+        """read header to get all the available info
+        Read header now get data
+        """
+        # Setting dictionaries to save data of each block in the header
+        self.Masses, self.PairCoeff, self.BondCoeff, self.AngleCoeff,\
+            self.DihedralCoeff = dict(), dict(), dict(), dict(), dict()
+        # Setting flags to save data correctly
+        Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
+            = False, False, False, False, False, False
+        # Track the number of lines
         linecount = 0
         with open(DATAFILE, 'r') as f:
             while True:
                 linecount += 1
                 line = f.readline()
-                if line.strip().endswith("atoms"):      self.NATOMS = int(line.strip().split(' ')[0])
-                if line.strip().endswith("atom types"): self.NATomTyp = int(line.strip().split(' ')[0])
-                if line.strip().endswith("bonds"):      self.NBonds = int(line.strip().split(' ')[0])
-                if line.strip().endswith("bond types"): self.NBondTyp = int(line.strip().split(' ')[0])
-                if line.strip().endswith("angles"):     self.NAngles = int(line.strip().split(' ')[0])
-                if line.strip().endswith("angle types"):self.NAngleTyp = int(line.strip().split(' ')[0])
-                if line.strip().endswith("dihedrals"):  self.NDihedrals = int(line.strip().split(' ')[0])
-                if line.strip().endswith("dihedral typss"): self.NDihedralsTyp = int(line.strip().split(' ')[0])
-                if line.strip().endswith("xhi"): self.Xlim = self.get_axis_lim(line.strip().split('xlo')[0])
-                if line.strip().endswith("yhi"): self.Ylim = self.get_axis_lim(line.strip().split('ylo')[0])
-                if line.strip().endswith("zhi"): self.Zlim = self.get_axis_lim(line.strip().split('zlo')[0])
-
-                if line.strip().startswith("Masses"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms = True, False, False, False, False, False
-                if line.strip().startswith("Pair"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms = False, True, False, False, False, False
-                if line.strip().startswith("Bond Coeffs"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms = False, False, True, False, False, False
-                if line.strip().startswith("Angle Coeffs"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms = False, False, False, True, False, False
-                if line.strip().startswith("Dihedral Coeffs"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms = False, False, False, False, True, False
-                if line.strip().startswith("Atoms"): 
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms = False, False, False, False, False, True
-                if line.strip():
-                    if Masses: self.get_masses(line.strip(), 'Masses')
-                    if PairCoeff: self.get_pair_coeff(line.strip(), 'Pair')
-                    if BondCoeff: self.get_bond_coeff(line.strip(), 'Bond')
-                    if AngleCoeff: self.get_angle_coeff(line.strip(), 'Angle')
-                    if DihedralCoeff: self.get_dihedral_coeff(line.strip(), 'Dihedral')
-                if Atoms: break
-                if not line: break
+                # self.process_type_box(line)
+                if line.strip().endswith("atoms"):
+                    self.NATOMS = int(line.strip().split(' ')[0])
+                elif line.strip().endswith("atom types"):
+                    self.NATomTyp = int(line.strip().split(' ')[0])
+                elif line.strip().endswith("bonds"):
+                    self.NBonds = int(line.strip().split(' ')[0])
+                elif line.strip().endswith("bond types"):
+                    self.NBondTyp = int(line.strip().split(' ')[0])
+                elif line.strip().endswith("angles"):
+                    self.NAngles = int(line.strip().split(' ')[0])
+                elif line.strip().endswith("angle types"):
+                    self.NAngleTyp = int(line.strip().split(' ')[0])
+                elif line.strip().endswith("dihedrals"):
+                    self.NDihedrals = int(line.strip().split(' ')[0])
+                elif line.strip().endswith("dihedral typss"):
+                    self.NDihedralsTyp = int(line.strip().split(' ')[0])
+                elif line.strip().endswith("xhi"):
+                    self.Xlim = self.get_axis_lim(line.strip().split('xlo')[0])
+                elif line.strip().endswith("yhi"):
+                    self.Ylim = self.get_axis_lim(line.strip().split('ylo')[0])
+                elif line.strip().endswith("zhi"):
+                    self.Zlim = self.get_axis_lim(line.strip().split('zlo')[0])
+                elif line.strip().startswith("Masses"):
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
+                         = True, False, False, False, False, False
+                elif line.strip().startswith("Pair"):
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
+                        = False, True, False, False, False, False
+                elif line.strip().startswith("Bond Coeffs"):
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
+                        = False, False, True, False, False, False
+                elif line.strip().startswith("Angle Coeffs"):
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
+                        = False, False, False, True, False, False
+                elif line.strip().startswith("Dihedral Coeffs"):
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
+                        = False, False, False, False, True, False
+                elif line.strip().startswith("Atoms"):
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
+                        = False, False, False, False, False, True
+                elif line.strip():
+                    if Masses:
+                        self.get_masses(line.strip(), 'Masses')
+                    if PairCoeff:
+                        self.get_pair_coeff(line.strip(), 'Pair')
+                    if BondCoeff:
+                        self.get_bond_coeff(line.strip(), 'Bond')
+                    if AngleCoeff:
+                        self.get_angle_coeff(line.strip(), 'Angle')
+                    if DihedralCoeff:
+                        self.get_dihedral_coeff(line.strip(), 'Dihedral')
+                if Atoms:
+                    break
+                if not line:
+                    break
 
     def get_axis_lim(self, lim) -> list:
         lim = lim.split(' ')
         lim = [float(item) for item in lim if item]
         return lim
-    
+
     def get_masses(self, line, check) -> dict:
-        if check not in line: 
+        if check not in line:
             typ = line.split(' ')[0]
             mass = float(line.split(' ')[1])
-            self.Masses[typ]=mass
-        else: pass
+            self.Masses[typ] = mass
+        else:
+            pass
 
     def get_pair_coeff(self, line, check)-> dict:
         if check not in line: 
