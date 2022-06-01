@@ -1,15 +1,25 @@
-import os, sys, re
+import sys
 import pandas as pd
 import numpy as np
 
+
 class DOC:
     """
-    A script to correct the bond problem in LAMMPS's write_data command and the boundary conditions.
-    These scripts read the data file from write_data, check the distance between particles that have a bond between them;
-    if the distance between two particles that have shared a bond is bigger than the HALF OF THE BOX SIZE, move the particle,
-    with smaller z close to the other one, i.e., just adding the length of the box to the z component.
+    A script to correct the bond problem in LAMMPS's write_data
+    command and the boundary conditions. These scripts read the
+    data file from write_data, check the distance between particles
+    that have a bond between them; if the distance between two
+    particles that have shared a bond is bigger than the HALF OF
+    THE BOX SIZE, move the particle, with smaller x|y|z close to the
+    other one, i.e., just adding the length of the box to the x|y|z
+    component.
+        - It read DATAFILE and check the header.
+        - write the number of header lines in the screen
+        - read atoms 
+        - read the bonds, angles, angles, dihedrals, ...
+
     The script is wrote for DATAFILE which have hybrid style, i.e.:
-    
+        
     Pair Coeffs # lj/cut/coul/long
 
     1 lj/cut/coul/long 0.1553 3.166
@@ -31,7 +41,19 @@ class DOC:
     2 opls 0 0 0.3 0
     
     usages: {sys.argv[0]} system.data
+
+    2022.05.14
+    _____________________________________________
+
+    The problems:
+        - many repeated loop the correct the data
+        - read all the data, we only need a skin in the size of 
+            chain length of the molecule
+        - output to be readable by both OVITO and LAMMPS
+    01.06.2022
     """
+
+
 MOLNUMBER = 32
 class FILEERROR:
     """
@@ -42,13 +64,15 @@ class FILEERROR:
 class HEADER:
     """
     read haeder data of the data file
+    check the number of the lines, atom, bond ... informations
+    get the box , pairs, ... coefficents
     """
+    
     def __init__(self) -> None:
         self.atomsLine = 0
         self.atomsLine = self.check_file()
         print(f'number of header lines: {self.atomsLine}\n')
         self.read_header()
-
 
     def check_file(self) -> int:
         FILECHECK = False
@@ -241,7 +265,6 @@ class UPDATE:
         self.Bonds = Bonds
         self.Atoms = Atoms
         self.header = header
-        # self.check_bonds_mol()
         self.get_sizes()
         del Bonds, Atoms, header
 
@@ -285,6 +308,7 @@ class UPDATE:
             self.check_coords(ai, aj)
         self.df = pd.DataFrame(self.Atoms).T
         self.check_box()
+        # self.check_bonds_mol()
 
     def check_box(self):
         self.XMIN = np.min(self.df.x); self.XMAX = np.max(self.df.x)
@@ -308,16 +332,44 @@ class UPDATE:
                         xi += lim
                     else: 
                         xj += lim
-                    # print(ax, ai, aj)
                     self.Atoms[ai][ax] = xi
                     self.Atoms[aj][ax] = xj
 
     def check_bonds_mol(self):
-        NUM_MOL = int(self.header.NATOMS/32)
-        print(NUM_MOL)
-        for m in range(1,NUM_MOL+1):
+        NMOLS = set(self.df.mol)
+        nnn=200
+        for m in range(nnn, nnn+1):
             mol_df = self.df.groupby(self.df.mol).get_group(m)
+            mol_df = mol_df.astype({'x':float,'y':float,'z':float})
             print(mol_df)
+            # print(mol_df.index)
+            mol_df.x-=mol_df.x.min()
+            mol_df.y-=mol_df.y.min()
+            mol_df.z-=mol_df.z.min()
+            print(mol_df)
+            MAXX = mol_df.x.max()
+            MAXY = mol_df.y.max()
+            MAXZ = mol_df.z.max()
+            # print(m, mol_df.x.idxmax())
+            #while MAXZ > self.boxz*0.5:
+            #    xid = mol_df.z.idxmax()
+            #    xi = mol_df.z[xid]
+            #    print(m, mol_df.z.idxmax(), MAXZ)
+            #    mol_df.loc[mol_df.z.max(), 'z'] =  xi-self.boxz
+            #    # mol_df['z'][xid] = xi-self.boxz
+            #    # print(m ,mol_df.z.max(),MAXX,MAXY,MAXZ)
+            #    # mol_df.x[mol_df.x.idxmax()]-=self.boxx
+            #    MAXZ = mol_df.z.max()
+        # self.return_tobox(mol_df)
+        # while MINX > 0.25*self.boxx:
+            # print(mol_df.x.min())
+
+    def return_tobox(self, df):
+        # max_id = df['x'].idxmax()
+        # print(df.iloc[max_id])
+        x, y=5,5
+        
+        
 
 
 
