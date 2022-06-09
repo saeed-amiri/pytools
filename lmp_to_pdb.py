@@ -1,20 +1,20 @@
 import pandas as pd
 import re
 
+
 class Doc:
-    """ Converting LAMMPS data file to PDB 
+    """ Converting LAMMPS data file to PDB
     This scripts temp to convert LAMMPS full atom style file to PDB file
     which can easily be read by VMD, ...
+    ~/.local/bin/pycodestyle top_to_lammps.py
     """
+
 
 class FILEERROR:
     """
     there is problem in the header of the INFILE,
     maybe long header!\n
     """
-
-
-start = time.time()
 
 
 class HEADER:
@@ -146,34 +146,49 @@ class HEADER:
         else:
             pass
 
-    def get_pair_coeff(self, line, check)-> dict:
-        if check not in line: 
-            line = line.split(' ')
-            typ = line[0]
-            self.PairCoeff[typ]=dict(style=line[1], coeff=line[2:])
-        else: pass
-    
-    def get_bond_coeff(self, line, check)-> dict:
+    def get_pair_coeff(self, line, check) -> dict:
         if check not in line:
             line = line.split(' ')
             typ = line[0]
-            self.BondCoeff[typ]=dict(style=line[1], coeff=line[2:])
-        else: pass
-        
-    def get_angle_coeff(self, line, check)-> dict:
-        if check not in line:
-            line = line.split(' ')
-            typ = line[0]
-            self.AngleCoeff[typ]=dict(style=line[1], coeff=line[2:])
-        else: pass
-    
-    def get_dihedral_coeff(self, line, check)-> dict:
-        if check not in line:
-            line = line.split(' ')
-            typ = line[0]
-            self.DihedralCoeff[typ]=dict(style=line[1], coeff=line[2:])
-        else: pass
+            self.PairCoeff[typ] = dict(
+                                        style=line[1],
+                                        coeff=line[2:]
+                                       )
+        else:
+            pass
 
+    def get_bond_coeff(self, line, check) -> dict:
+        if check not in line:
+            line = line.split(' ')
+            typ = line[0]
+            self.BondCoeff[typ] = dict(
+                                        style=line[1],
+                                        coeff=line[2:]
+                                       )
+        else:
+            pass
+
+    def get_angle_coeff(self, line, check) -> dict:
+        if check not in line:
+            line = line.split(' ')
+            typ = line[0]
+            self.AngleCoeff[typ] = dict(
+                                        style=line[1],
+                                        coeff=line[2:]
+                                       )
+        else:
+            pass
+
+    def get_dihedral_coeff(self, line, check) -> dict:
+        if check not in line:
+            line = line.split(' ')
+            typ = line[0]
+            self.DihedralCoeff[typ] = dict(
+                                            style=line[1],
+                                            coeff=line[2:]
+                                           )
+        else:
+            pass
 
 
 class BODY:
@@ -184,13 +199,13 @@ class BODY:
     def __init__(self, names) -> None:
         self.Name = names
         del names
-    
+
     def read_body(self):
         self.Atoms, self.Velocities, self.Bonds, self.Angles, self.Dihedrals\
             = dict(), dict(), dict(), dict(), dict()
         Atoms, Velocities, Bonds, Angles, Dihedrals\
             = False, False, False, False, False
-            
+
         with open(INFILE, 'r') as f:
             while True:
                 line = f.readline()
@@ -210,21 +225,27 @@ class BODY:
                     Atoms, Velocities, Bonds, Angles, Dihedrals\
                         = False, False, False, False, True
                 if line.strip():
-                    if Atoms :self.get_atoms(line.strip())
-                    if Velocities: self.get_velocities(line.strip())
-                    if Bonds: self.get_bonds(line.strip())
-                    if Angles: self.get_angles(line.strip())
-                    if Dihedrals: self.get_dihedrals(line.strip())
-                if not line: break
+                    if Atoms:
+                        self.get_atoms(line.strip())
+                    if Velocities:
+                        self.get_velocities(line.strip())
+                    if Bonds:
+                        self.get_bonds(line.strip())
+                    if Angles:
+                        self.get_angles(line.strip())
+                    if Dihedrals:
+                        self.get_dihedrals(line.strip())
+                if not line:
+                    break
             self.Atoms_df = pd.DataFrame.from_dict(
                             self.Atoms, orient='columns').T
             self.Atoms_df = self.Atoms_df.astype(
-                            {'atom_id':'int','mol': 'int', 'typ': 'int'})
+                            {'atom_id': 'int', 'mol': 'int', 'typ': 'int'})
             self.Atoms_df = self.Atoms_df.astype(
-                            {'nx':'int','ny': 'int', 'nz': 'int'})
+                            {'nx': 'int', 'ny': 'int', 'nz': 'int'})
             self.Bonds_df = pd.DataFrame.from_dict(self.Bonds).T
             self.Bonds_df = self.Bonds_df.astype({'ai': 'int', 'aj': 'int'})
-    
+
     def get_atoms(self, line) -> dict:
         if 'Atoms' not in line:
             line = line.split(" ")
@@ -232,34 +253,35 @@ class BODY:
             atom_id = int(line[0])
             i_mol = int(line[1])
             i_typ = int(line[2])
-            i_charge = float(line[3]) 
+            i_charge = float(line[3])
             i_x = float(line[4])
             i_y = float(line[5])
             i_z = float(line[6])
             i_name = self.Name[i_typ]
             try:
-                i_nx=str(line[7])
-                i_ny=str(line[8])
-                i_nz=str(line[9])
+                i_nx = str(line[7])
+                i_ny = str(line[8])
+                i_nz = str(line[9])
             except:
-                i_nx=0
-                i_ny=0
-                i_nz=0
+                i_nx = 0
+                i_ny = 0
+                i_nz = 0
             self.Atoms[atom_id] = dict(
-                                       atom_id = atom_id,
-                                       mol = i_mol,
-                                       typ = i_typ,
-                                       charge = i_charge,
-                                       x = i_x,
-                                       y = i_y,
-                                       z = i_z,
-                                       nx = i_nx,
-                                       ny = i_ny,
-                                       nz = i_nz,
-                                       cmt = '#',
-                                       name = i_name
-                                       )
-        else: pass
+                                        atom_id=atom_id,
+                                        mol=i_mol,
+                                        typ=i_typ,
+                                        charge=i_charge,
+                                        x=i_x,
+                                        y=i_y,
+                                        z=i_z,
+                                        nx=i_nx,
+                                        ny=i_ny,
+                                        nz=i_nz,
+                                        cmt='#',
+                                        name=i_name
+                                        )
+        else:
+            pass
 
     def get_velocities(self, line) -> dict:
         if 'Velocities' not in line:
@@ -269,9 +291,14 @@ class BODY:
             i_vx = float(line[1])
             i_vy = float(line[2])
             i_vz = float(line[3])
-            self.Velocities[atom_id] = dict(vx = i_vx, vy = i_vy, vz = i_vz)
-        else: pass
-    
+            self.Velocities[atom_id] = dict(
+                                             vx=i_vx,
+                                             vy=i_vy,
+                                             vz=i_vz
+                                            )
+        else:
+            pass
+
     def get_bonds(self, line) -> dict:
         if 'Bonds' not in line:
             line = line.split(" ")
@@ -280,8 +307,13 @@ class BODY:
             i_typ = line[1]
             i_ai = line[2]
             i_aj = line[3]
-            self.Bonds[bond_id] = dict(typ = i_typ, ai = i_ai, aj = i_aj)
-        else: pass
+            self.Bonds[bond_id] = dict(
+                                        typ=i_typ,
+                                        ai=i_ai,
+                                        aj=i_aj
+                                       )
+        else:
+            pass
 
     def get_angles(self, line) -> dict:
         if "Angles" not in line:
@@ -293,7 +325,11 @@ class BODY:
             i_aj = line[3]
             i_ak = line[4]
             self.Angles[angle_id] = dict(
-                typ = i_typ, ai = i_ai, aj = i_aj, ak = i_ak)
+                                         typ=i_typ,
+                                         ai=i_ai,
+                                         aj=i_aj,
+                                         ak=i_ak
+                                        )
 
     def get_dihedrals(self, line) -> dict:
         if "Dihedrals" not in line:
@@ -306,9 +342,9 @@ class BODY:
             i_ak = line[4]
             i_ah = line[5]
             self.Dihedrals[dihedrals_id] = dict(
-                                                typ = i_typ,
-                                                ai = i_ai,
-                                                aj = i_aj,
-                                                ak = i_ak,
-                                                ah = i_ah
+                                                 typ=i_typ,
+                                                 ai=i_ai,
+                                                 aj=i_aj,
+                                                 ak=i_ak,
+                                                 ah=i_ah
                                                 )
