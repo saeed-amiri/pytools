@@ -14,7 +14,7 @@ class Doc:
 class FILEERROR:
     """
     there is problem in the header of the INFILE,
-    maybe long header!\n
+    maybe a long header!\n
     """
 
 
@@ -354,7 +354,77 @@ class BODY:
                                                 )
 
 
-INFILE = sys.argv[1]
-header = HEADER()
-body = BODY(header.Names)
-body.read_body()
+class PDB:
+    """Make pdb file
+    convert LAMMPS data file to a standard PDB file format based on:
+    [https://www.cgl.ucsf.edu/chimera/docs/UsersGuide/tutorials/pdbintro.html]
+
+    A PDB file has format as:
+
+    ATOM 	atomic coordinate record containing the X,Y,Z\
+        orthogonal Å coordinates for atoms in standard residues]
+        (amino acids and nucleic acids).
+    Protein Data Bank Format:
+      Coordinate Section
+        Record Type	Columns	Data 	Justification	Data Type
+        ATOM 	1-4	“ATOM”	                    	character
+        7-11#	Atom serial number      	right	integer
+        13-16	Atom name	                left*	character
+        17	    Alternate location indicator		character
+        18-20§	Residue name	            right	character
+        22	    Chain identifier		            character
+        23-26	Residue sequence number	    right	integer
+        27	    Code for insertions of residues		character
+        31-38	X orthogonal Å coordinate	right	real (8.3)
+        39-46	Y orthogonal Å coordinate	right	real (8.3)
+        47-54	Z orthogonal Å coordinate	right	real (8.3)
+        55-60	Occupancy	                right	real (6.2)
+        61-66	Temperature factor	        right	real (6.2)
+        73-76	Segment identifier¶	        left	character
+        77-78	Element symbol	            right	character
+        79-80	Charge		                        character
+
+        HETATM	1-6	“HETATM”	                	character
+        7-80	same as ATOM records
+
+        TER 	1-3	“TER”	                    	character
+        7-11#	Serial number	            right	integer
+        18-20§	Residue name	            right	character
+        22	    Chain identifier		            character
+        23-26	Residue sequence number	    right	integer
+        27	Code for insertions of residues	    	character
+
+    #Chimera allows (nonstandard) use of columns 6-11 for the integer\
+        atom serial number in ATOM records, and in TER records, only the\
+        “TER” is required.
+
+    *Atom names start with element symbols right-justified in columns\
+        13-14 as permitted by the length of the name. For example, the\
+        symbol FE for iron appears in columns 13-14, whereas the symbol\
+        C for carbon appears in column 14 (see Misaligned Atom Names).\
+        If an atom name has four characters, however, it must start in\
+        column 13 even if the element symbol is a single character\
+        (for example, see Hydrogen Atoms).
+
+    §Chimera allows (nonstandard) use of four-character residue names\
+        occupying an additional column to the right.
+
+    ¶Segment identifier is obsolete, but still used by some programs.\
+        Chimera assigns it as the atom attribute pdbSegment to allow\
+        command-line specification.
+
+    
+    The format of ecah section is (fortran style):
+    Format (A6,I5,1X,A4,A1,A3,1X,A1,I4,A1,3X,3F8.3,2F6.2,10X,A2,A2)
+    """
+    def __init__(self, header, body) -> None:
+        self.atoms = body.Atoms_df
+        self.bonds = body.Bonds_df
+
+
+if __name__ == '__main__':
+    INFILE = sys.argv[1]
+    header = HEADER()
+    body = BODY(header.Names)
+    body.read_body()
+    pdb = PDB(header, body)
