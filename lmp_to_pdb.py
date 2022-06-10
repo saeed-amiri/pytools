@@ -1,6 +1,5 @@
 import sys
 import pandas as pd
-import re
 
 
 class Doc:
@@ -152,7 +151,8 @@ class HEADER:
         lim = [float(item) for item in lim if item]
         return lim
 
-    def get_masses(self, line, check) -> dict:
+    def get_masses(self, line, check) -> None:
+        # stting the nth row of the dictionary
         if check not in line:
             typ = int(line.split(' ')[0])
             mass = float(line.split(' ')[1])
@@ -160,7 +160,8 @@ class HEADER:
             self.Masses[typ] = mass
             self.Names[typ] = atom_name
 
-    def get_pair_coeff(self, line, check) -> dict:
+    def get_pair_coeff(self, line, check) -> None:
+        # stting the nth row of the dictionary
         if check not in line:
             line = line.split(' ')
             typ = int(line[0])
@@ -171,7 +172,8 @@ class HEADER:
                                         coeff=i_coeff
                                        )
 
-    def get_bond_coeff(self, line, check) -> dict:
+    def get_bond_coeff(self, line, check) -> None:
+        # stting the nth row of the dictionary
         if check not in line:
             line = line.split(' ')
             typ = int(line[0])
@@ -182,7 +184,8 @@ class HEADER:
                                         coeff=i_coeff
                                        )
 
-    def get_angle_coeff(self, line, check) -> dict:
+    def get_angle_coeff(self, line, check) -> None:
+        # stting the nth row of the dictionary
         if check not in line:
             line = line.split(' ')
             typ = int(line[0])
@@ -193,7 +196,8 @@ class HEADER:
                                         coeff=i_coeff
                                        )
 
-    def get_dihedral_coeff(self, line, check) -> dict:
+    def get_dihedral_coeff(self, line, check) -> None:
+        # stting the nth row of the dictionary
         if check not in line:
             line = line.split(' ')
             typ = int(line[0])
@@ -256,7 +260,8 @@ class BODY:
                             self.Atoms, orient='columns').T
             self.Bonds_df = pd.DataFrame.from_dict(self.Bonds).T
 
-    def get_atoms(self, line) -> dict:
+    def get_atoms(self, line) -> None:
+        # stting the nth row of the dictionary
         if 'Atoms' not in line:
             line = line.split()
             line = [item for item in line if item]
@@ -269,9 +274,9 @@ class BODY:
             i_z = float(line[6])
             i_name = self.Name[i_typ]
             try:
-                i_nx = str(line[7])
-                i_ny = str(line[8])
-                i_nz = str(line[9])
+                i_nx = int(line[7])
+                i_ny = int(line[8])
+                i_nz = int(line[9])
             except:
                 i_nx = 0
                 i_ny = 0
@@ -291,7 +296,8 @@ class BODY:
                                         name=i_name
                                        )
 
-    def get_velocities(self, line) -> dict:
+    def get_velocities(self, line) -> None:
+        # stting the nth row of the dictionary
         if 'Velocities' not in line:
             line = line.split()
             line = [item for item in line if item]
@@ -305,7 +311,8 @@ class BODY:
                                              vz=i_vz
                                             )
 
-    def get_bonds(self, line) -> dict:
+    def get_bonds(self, line) -> None:
+        # stting the nth row of the dictionary
         if 'Bonds' not in line:
             line = line.split()
             line = [int(item) for item in line if item]
@@ -319,7 +326,8 @@ class BODY:
                                         aj=i_aj
                                        )
 
-    def get_angles(self, line) -> dict:
+    def get_angles(self, line) -> None:
+        # stting the nth row of the dictionary
         if "Angles" not in line:
             line = line.split()
             line = [int(item) for item in line if item]
@@ -335,7 +343,8 @@ class BODY:
                                          ak=i_ak
                                         )
 
-    def get_dihedrals(self, line) -> dict:
+    def get_dihedrals(self, line) -> None:
+        # stting the nth row of the dictionary
         if "Dihedrals" not in line:
             line = line.split()
             line = [int(item) for item in line if item]
@@ -413,7 +422,6 @@ class PDB:
         Chimera assigns it as the atom attribute pdbSegment to allow
         command-line specification.
 
-    
     The format of ecah section is (fortran style):
     Format (A6,I5,1X,A4,A1,A3,1X,A1,I4,A1,3X,3F8.3,2F6.2,10X,A2,A2)
     """
@@ -423,6 +431,7 @@ class PDB:
 
     def mk_line(self) -> None:
         """make """
+
 
 if __name__ == '__main__':
     INFILE = sys.argv[1]
