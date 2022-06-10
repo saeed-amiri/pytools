@@ -430,7 +430,7 @@ class PDB:
         self.bonds = body.Bonds_df
         self.header = header
 
-    def mk_line(self) -> None:
+    def mk_pdb(self) -> None:
         """make ATOM line in the PDB file"""
         PDBFILE = str(sys.argv[1]).split('.')[0] + '.pdb'
         print(f"Writing data in {PDBFILE} ...\n")
@@ -461,4 +461,4 @@ if __name__ == '__main__':
     body = BODY(header.Names)
     body.read_body()
     pdb = PDB(header, body)
-    pdb.mk_line()
+    pdb.mk_pdb()
