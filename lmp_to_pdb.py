@@ -165,7 +165,7 @@ class HEADER:
             line = line.split(' ')
             typ = int(line[0])
             i_style = line[1]
-            i_coeff = line[2]
+            i_coeff = line[2:]
             self.PairCoeff[typ] = dict(
                                         style=i_style,
                                         coeff=i_coeff
@@ -176,7 +176,7 @@ class HEADER:
             line = line.split(' ')
             typ = int(line[0])
             i_style = line[1]
-            i_coeff = line[2]
+            i_coeff = line[2:]
             self.BondCoeff[typ] = dict(
                                         style=i_style,
                                         coeff=i_coeff
@@ -187,7 +187,7 @@ class HEADER:
             line = line.split(' ')
             typ = int(line[0])
             i_style = line[1]
-            i_coeff = line[2]
+            i_coeff = line[2:]
             self.AngleCoeff[typ] = dict(
                                         style=i_style,
                                         coeff=i_coeff
@@ -198,7 +198,7 @@ class HEADER:
             line = line.split(' ')
             typ = int(line[0])
             i_style = line[1]
-            i_coeff = line[2]
+            i_coeff = line[2:]
             self.DihedralCoeff[typ] = dict(
                                             style=i_style,
                                             coeff=i_coeff
@@ -359,9 +359,9 @@ class PDB:
     convert LAMMPS data file to a standard PDB file format based on:
     [https://www.cgl.ucsf.edu/chimera/docs/UsersGuide/tutorials/pdbintro.html]
 
-    A PDB file has format as:
+    A PDB file has a format as:
 
-    ATOM 	atomic coordinate record containing the X,Y,Z\
+    ATOM 	atomic coordinate record containing the X,Y,Z
         orthogonal Å coordinates for atoms in standard residues]
         (amino acids and nucleic acids).
     Protein Data Bank Format:
@@ -381,7 +381,7 @@ class PDB:
         55-60	Occupancy	                right	real (6.2)
         61-66	Temperature factor	        right	real (6.2)
         73-76	Segment identifier¶	        left	character
-        77-78	Element symbol	            right	character
+        77-78	Element symbol              right	character
         79-80	Charge		                        character
 
         HETATM	1-6	“HETATM”	                	character
@@ -394,23 +394,23 @@ class PDB:
         23-26	Residue sequence number	    right	integer
         27	Code for insertions of residues	    	character
 
-    #Chimera allows (nonstandard) use of columns 6-11 for the integer\
-        atom serial number in ATOM records, and in TER records, only the\
+    #Chimera allows (nonstandard) use of columns 6-11 for the integer
+        atom serial number in ATOM records, and in TER records, only the
         “TER” is required.
 
-    *Atom names start with element symbols right-justified in columns\
-        13-14 as permitted by the length of the name. For example, the\
-        symbol FE for iron appears in columns 13-14, whereas the symbol\
-        C for carbon appears in column 14 (see Misaligned Atom Names).\
-        If an atom name has four characters, however, it must start in\
-        column 13 even if the element symbol is a single character\
+    *Atom names start with element symbols right-justified in columns
+        13-14 as permitted by the length of the name. For example, the
+        symbol FE for iron appears in columns 13-14, whereas the symbol
+        C for carbon appears in column 14 (see Misaligned Atom Names).
+        If an atom name has four characters, however, it must start in
+        column 13 even if the element symbol is a single character
         (for example, see Hydrogen Atoms).
 
-    §Chimera allows (nonstandard) use of four-character residue names\
+    §Chimera allows (nonstandard) use of four-character residue names
         occupying an additional column to the right.
 
-    ¶Segment identifier is obsolete, but still used by some programs.\
-        Chimera assigns it as the atom attribute pdbSegment to allow\
+    ¶Segment identifier is obsolete, but still used by some programs.
+        Chimera assigns it as the atom attribute pdbSegment to allow
         command-line specification.
 
     
@@ -421,6 +421,8 @@ class PDB:
         self.atoms = body.Atoms_df
         self.bonds = body.Bonds_df
 
+    def mk_line(self) -> None:
+        """make """
 
 if __name__ == '__main__':
     INFILE = sys.argv[1]
@@ -428,3 +430,4 @@ if __name__ == '__main__':
     body = BODY(header.Names)
     body.read_body()
     pdb = PDB(header, body)
+    print(pdb.__doc__)
