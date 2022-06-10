@@ -23,6 +23,21 @@ class HEADER:
     read haeder data of the data file
     check the number of the lines, atom, bond ... informations
     get the box , pairs, ... coefficents
+    Use this class to read the header of the file (LAMMPS data file),
+    and the file should have Masses with their name specified after (#)
+    e.g.:
+
+        Masses
+
+        1 1.008000 # H
+        2 16.000000 # OH
+        3 16.000000 # OB
+        4 28.059999 # Si
+
+    it will return a few attributes for the class if they existed:
+    Masses, Pair, and Angel and Dihedral coefficients. And also the name
+    of the atoms types.
+    The class BODY needs' names' to read the data file.
     """
 
     def __init__(self) -> None:
@@ -58,7 +73,7 @@ class HEADER:
 
     def read_header(self):
         """read header to get all the available info
-        Read header now get data
+        Read header now and get the data
         """
         # Setting dictionaries to save data of each block in the header
         self.Masses, self.PairCoeff, self.BondCoeff, self.AngleCoeff,\
@@ -75,7 +90,6 @@ class HEADER:
                 if linecount > self.atomsLine:
                     break
                 line = f.readline()
-                # self.process_type_box(line)
                 if line.strip().endswith("atoms"):
                     self.NATOMS = int(line.strip().split(' ')[0])
                 elif line.strip().endswith("atom types"):
@@ -98,24 +112,25 @@ class HEADER:
                     self.Ylim = self.get_axis_lim(line.strip().split('ylo')[0])
                 elif line.strip().endswith("zhi"):
                     self.Zlim = self.get_axis_lim(line.strip().split('zlo')[0])
+                # setting up Flages for reading the cards of data in the file
                 elif line.strip().startswith("Masses"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
-                         = True, False, False, False, False, False
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff,\
+                        Atoms = True, False, False, False, False, False
                 elif line.strip().startswith("Pair"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
-                        = False, True, False, False, False, False
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff,\
+                        Atoms = False, True, False, False, False, False
                 elif line.strip().startswith("Bond Coeffs"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
-                        = False, False, True, False, False, False
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff,\
+                        Atoms = False, False, True, False, False, False
                 elif line.strip().startswith("Angle Coeffs"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
-                        = False, False, False, True, False, False
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff,\
+                        Atoms = False, False, False, True, False, False
                 elif line.strip().startswith("Dihedral Coeffs"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
-                        = False, False, False, False, True, False
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff,\
+                        Atoms = False, False, False, False, True, False
                 elif line.strip().startswith("Atoms"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
-                        = False, False, False, False, False, True
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff,\
+                        Atoms = False, False, False, False, False, True
                 elif line.strip():
                     if Masses:
                         self.get_masses(line.strip(), 'Masses')
@@ -263,7 +278,7 @@ class BODY:
                 i_nx = str(line[7])
                 i_ny = str(line[8])
                 i_nz = str(line[9])
-            except:
+            except ValueError:
                 i_nx = 0
                 i_ny = 0
                 i_nz = 0
