@@ -1,3 +1,4 @@
+import sys
 import pandas as pd
 import re
 
@@ -248,7 +249,7 @@ class BODY:
 
     def get_atoms(self, line) -> dict:
         if 'Atoms' not in line:
-            line = line.split(" ")
+            line = line.split()
             line = [item for item in line if item]
             atom_id = int(line[0])
             i_mol = int(line[1])
@@ -279,13 +280,13 @@ class BODY:
                                         nz=i_nz,
                                         cmt='#',
                                         name=i_name
-                                        )
+                                       )
         else:
             pass
 
     def get_velocities(self, line) -> dict:
         if 'Velocities' not in line:
-            line = line.split(" ")
+            line = line.split()
             line = [item for item in line if item]
             atom_id = int(line[0])
             i_vx = float(line[1])
@@ -301,7 +302,7 @@ class BODY:
 
     def get_bonds(self, line) -> dict:
         if 'Bonds' not in line:
-            line = line.split(" ")
+            line = line.split()
             line = [int(item) for item in line if item]
             bond_id = line[0]
             i_typ = line[1]
@@ -317,7 +318,7 @@ class BODY:
 
     def get_angles(self, line) -> dict:
         if "Angles" not in line:
-            line = line.split(" ")
+            line = line.split()
             line = [int(item) for item in line if item]
             angle_id = line[0]
             i_typ = line[1]
@@ -333,7 +334,7 @@ class BODY:
 
     def get_dihedrals(self, line) -> dict:
         if "Dihedrals" not in line:
-            line = line.split(" ")
+            line = line.split()
             line = [int(item) for item in line if item]
             dihedrals_id = line[0]
             i_typ = line[1]
@@ -348,3 +349,9 @@ class BODY:
                                                  ak=i_ak,
                                                  ah=i_ah
                                                 )
+
+
+INFILE = sys.argv[1]
+header = HEADER()
+body = BODY(header.Names)
+body.read_body()
