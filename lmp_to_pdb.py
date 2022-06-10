@@ -52,7 +52,7 @@ class HEADER:
         output:
             - number of header lines
         """
-        # An integer to prevent overreading in case of header bugs
+        # An integer to prevent over-reading in case of header bugs
         MAXHEADER = 1000
         # track the number of lines in the hedaer
         linecount = 0
@@ -428,9 +428,15 @@ class PDB:
     def __init__(self, header, body) -> None:
         self.atoms = body.Atoms_df
         self.bonds = body.Bonds_df
+        self.header = header
 
     def mk_line(self) -> None:
         """make ATOM line in the PDB file"""
+        PDBFILE = str(sys.argv[1]).split('.')[0] + '.pdb'
+        print(f"Writing data in {PDBFILE} ...\n")
+        sys.stdout = open(PDBFILE, 'w')
+        print(f"CRYST1   {self.header.Xlim[1]}   {self.header.Ylim[1]}\
+               {self.header.Zlim[1]}  90 90 90   P1   1")
         for i in range(len(self.atoms)):
             line_list = [' ']*79
             line_list[0:4] = [i for i in 'ATOM']
@@ -438,14 +444,15 @@ class PDB:
             line_list[13:16] = [i for i in str(self.atoms.iloc[i]['name'])]
             line_list[17:20] = [i for i in str(self.atoms.iloc[i]['name'])]
             line_list[22:27] = [i for i in str(self.atoms.iloc[i]['mol'])]
-
             line_list[30:39] = [i for i in f"{self.atoms.iloc[i]['x']:8.3f}"]
             line_list[39:47] = [i for i in f"{self.atoms.iloc[i]['y']:8.3f}"]
             line_list[47:55] = [i for i in f"{self.atoms.iloc[i]['z']:8.3f}"]
-            
-            line_list[55:61] = [i for i in f"{self.atoms.iloc[i]['charge']:6.2f}"]
+            line_list[55:61] = [
+                i for i in f"{self.atoms.iloc[i]['charge']:6.2f}"]
             line_list[61:66] = [i for i in f"{1.0:6.2f}"]
             print("".join(str(item) for item in line_list))
+        print('END\n')
+        sys.stdout = sys.__stdout__
 
 
 if __name__ == '__main__':
