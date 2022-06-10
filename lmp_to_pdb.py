@@ -430,7 +430,22 @@ class PDB:
         self.bonds = body.Bonds_df
 
     def mk_line(self) -> None:
-        """make """
+        """make ATOM line in the PDB file"""
+        for i in range(len(self.atoms)):
+            line_list = [' ']*79
+            line_list[0:4] = [i for i in 'ATOM']
+            line_list[6:11] = [i for i in str(self.atoms.iloc[i]['atom_id'])]
+            line_list[13:16] = [i for i in str(self.atoms.iloc[i]['name'])]
+            line_list[17:20] = [i for i in str(self.atoms.iloc[i]['name'])]
+            line_list[22:27] = [i for i in str(self.atoms.iloc[i]['mol'])]
+
+            line_list[30:39] = [i for i in f"{self.atoms.iloc[i]['x']:8.3f}"]
+            line_list[39:47] = [i for i in f"{self.atoms.iloc[i]['y']:8.3f}"]
+            line_list[47:55] = [i for i in f"{self.atoms.iloc[i]['z']:8.3f}"]
+            
+            line_list[55:61] = [i for i in f"{self.atoms.iloc[i]['charge']:6.2f}"]
+            line_list[61:66] = [i for i in f"{1.0:6.2f}"]
+            print("".join(str(item) for item in line_list))
 
 
 if __name__ == '__main__':
@@ -439,4 +454,4 @@ if __name__ == '__main__':
     body = BODY(header.Names)
     body.read_body()
     pdb = PDB(header, body)
-    print(pdb.__doc__)
+    pdb.mk_line()
