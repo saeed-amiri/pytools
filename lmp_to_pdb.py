@@ -163,43 +163,52 @@ class HEADER:
     def get_pair_coeff(self, line, check) -> dict:
         if check not in line:
             line = line.split(' ')
-            typ = line[0]
+            typ = int(line[0])
+            i_style = line[1]
+            i_coeff = line[2]
             self.PairCoeff[typ] = dict(
-                                        style=line[1],
-                                        coeff=line[2:]
+                                        style=i_style,
+                                        coeff=i_coeff
                                        )
 
     def get_bond_coeff(self, line, check) -> dict:
         if check not in line:
             line = line.split(' ')
-            typ = line[0]
+            typ = int(line[0])
+            i_style = line[1]
+            i_coeff = line[2]
             self.BondCoeff[typ] = dict(
-                                        style=line[1],
-                                        coeff=line[2:]
+                                        style=i_style,
+                                        coeff=i_coeff
                                        )
 
     def get_angle_coeff(self, line, check) -> dict:
         if check not in line:
             line = line.split(' ')
-            typ = line[0]
+            typ = int(line[0])
+            i_style = line[1]
+            i_coeff = line[2]
             self.AngleCoeff[typ] = dict(
-                                        style=line[1],
-                                        coeff=line[2:]
+                                        style=i_style,
+                                        coeff=i_coeff
                                        )
 
     def get_dihedral_coeff(self, line, check) -> dict:
         if check not in line:
             line = line.split(' ')
-            typ = line[0]
+            typ = int(line[0])
+            i_style = line[1]
+            i_coeff = line[2]
             self.DihedralCoeff[typ] = dict(
-                                            style=line[1],
-                                            coeff=line[2:]
+                                            style=i_style,
+                                            coeff=i_coeff
                                            )
 
 
 class BODY:
     """
     read the data for atoms,velocities, bonds, angles, dihedrals
+    It needs the names of the atoms read by HEADER class
     """
 
     def __init__(self, names) -> None:
@@ -245,12 +254,7 @@ class BODY:
                     break
             self.Atoms_df = pd.DataFrame.from_dict(
                             self.Atoms, orient='columns').T
-            self.Atoms_df = self.Atoms_df.astype(
-                            {'atom_id': 'int', 'mol': 'int', 'typ': 'int'})
-            self.Atoms_df = self.Atoms_df.astype(
-                            {'nx': 'int', 'ny': 'int', 'nz': 'int'})
             self.Bonds_df = pd.DataFrame.from_dict(self.Bonds).T
-            self.Bonds_df = self.Bonds_df.astype({'ai': 'int', 'aj': 'int'})
 
     def get_atoms(self, line) -> dict:
         if 'Atoms' not in line:
@@ -306,9 +310,9 @@ class BODY:
             line = line.split()
             line = [int(item) for item in line if item]
             bond_id = line[0]
-            i_typ = line[1]
-            i_ai = line[2]
-            i_aj = line[3]
+            i_typ = int(line[1])
+            i_ai = int(line[2])
+            i_aj = int(line[3])
             self.Bonds[bond_id] = dict(
                                         typ=i_typ,
                                         ai=i_ai,
@@ -320,10 +324,10 @@ class BODY:
             line = line.split()
             line = [int(item) for item in line if item]
             angle_id = line[0]
-            i_typ = line[1]
-            i_ai = line[2]
-            i_aj = line[3]
-            i_ak = line[4]
+            i_typ = int(line[1])
+            i_ai = int(line[2])
+            i_aj = int(line[3])
+            i_ak = int(line[4])
             self.Angles[angle_id] = dict(
                                          typ=i_typ,
                                          ai=i_ai,
@@ -336,11 +340,11 @@ class BODY:
             line = line.split()
             line = [int(item) for item in line if item]
             dihedrals_id = line[0]
-            i_typ = line[1]
-            i_ai = line[2]
-            i_aj = line[3]
-            i_ak = line[4]
-            i_ah = line[5]
+            i_typ = int(line[1])
+            i_ai = int(line[2])
+            i_aj = int(line[3])
+            i_ak = int(line[4])
+            i_ah = int(line[5])
             self.Dihedrals[dihedrals_id] = dict(
                                                  typ=i_typ,
                                                  ai=i_ai,
