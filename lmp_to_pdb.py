@@ -159,8 +159,6 @@ class HEADER:
             atom_name = line.split('#')[1].strip()
             self.Masses[typ] = mass
             self.Names[typ] = atom_name
-        else:
-            pass
 
     def get_pair_coeff(self, line, check) -> dict:
         if check not in line:
@@ -170,8 +168,6 @@ class HEADER:
                                         style=line[1],
                                         coeff=line[2:]
                                        )
-        else:
-            pass
 
     def get_bond_coeff(self, line, check) -> dict:
         if check not in line:
@@ -181,8 +177,6 @@ class HEADER:
                                         style=line[1],
                                         coeff=line[2:]
                                        )
-        else:
-            pass
 
     def get_angle_coeff(self, line, check) -> dict:
         if check not in line:
@@ -192,8 +186,6 @@ class HEADER:
                                         style=line[1],
                                         coeff=line[2:]
                                        )
-        else:
-            pass
 
     def get_dihedral_coeff(self, line, check) -> dict:
         if check not in line:
@@ -203,8 +195,6 @@ class HEADER:
                                             style=line[1],
                                             coeff=line[2:]
                                            )
-        else:
-            pass
 
 
 class BODY:
@@ -278,7 +268,7 @@ class BODY:
                 i_nx = str(line[7])
                 i_ny = str(line[8])
                 i_nz = str(line[9])
-            except ValueError:
+            except:
                 i_nx = 0
                 i_ny = 0
                 i_nz = 0
@@ -296,8 +286,6 @@ class BODY:
                                         cmt='#',
                                         name=i_name
                                        )
-        else:
-            pass
 
     def get_velocities(self, line) -> dict:
         if 'Velocities' not in line:
@@ -312,8 +300,6 @@ class BODY:
                                              vy=i_vy,
                                              vz=i_vz
                                             )
-        else:
-            pass
 
     def get_bonds(self, line) -> dict:
         if 'Bonds' not in line:
@@ -328,8 +314,6 @@ class BODY:
                                         ai=i_ai,
                                         aj=i_aj
                                        )
-        else:
-            pass
 
     def get_angles(self, line) -> dict:
         if "Angles" not in line:
