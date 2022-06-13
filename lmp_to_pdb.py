@@ -6,7 +6,11 @@ class Doc:
     """ Converting LAMMPS data file to PDB
     This scripts temp to convert LAMMPS full atom style file to PDB file
     which can easily be read by VMD, ...
-    ~/.local/bin/pycodestyle top_to_lammps.py
+    [ checking PEP8
+        ~/.local/bin/pycodestyle lmp_to_pdb.py
+    and typing"
+        ~/.local/bin/mypy lmp_to_pdb.py
+    ]
 
     USAGE:
         python3.9 lmp_to_pdb.py input_file: lammps_data_file
@@ -282,7 +286,7 @@ class BODY:
                 i_nx = int(line[7])
                 i_ny = int(line[8])
                 i_nz = int(line[9])
-            except:
+            except ValueError:
                 i_nx = 0
                 i_ny = 0
                 i_nz = 0
