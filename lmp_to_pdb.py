@@ -7,6 +7,11 @@ class Doc:
     This scripts temp to convert LAMMPS full atom style file to PDB file
     which can easily be read by VMD, ...
     ~/.local/bin/pycodestyle top_to_lammps.py
+
+    USAGE:
+        python3.9 lmp_to_pdb.py input_file: lammps_data_file
+    Output:
+        A PDB file from the input
     """
 
 
@@ -437,7 +442,8 @@ class PDB:
         sys.stdout = open(PDBFILE, 'w')
         print(f"CRYST1   {self.header.Xlim[1]}   {self.header.Ylim[1]}\
                {self.header.Zlim[1]}  90 90 90   P1   1")
-        for i in range(len(self.atoms)):
+        # loop over all records in the atoms dataframe
+        for i, _ in enumerate(self.atoms):
             line_list = [' ']*79
             line_list[0:4] = [i for i in 'ATOM']
             line_list[6:11] = [i for i in str(self.atoms.iloc[i]['atom_id'])]
@@ -456,6 +462,9 @@ class PDB:
 
 
 if __name__ == '__main__':
+    if not sys.argv[1:]:
+        doc = Doc()
+        exit(f"\n{doc.__doc__}\n")
     INFILE = sys.argv[1]
     header = HEADER()
     body = BODY(header.Names)
