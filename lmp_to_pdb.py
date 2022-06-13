@@ -439,11 +439,14 @@ class PDB:
         """make ATOM line in the PDB file"""
         PDBFILE = str(sys.argv[1]).split('.')[0] + '.pdb'
         print(f"Writing data in {PDBFILE} ...\n")
+        # set sys.stdout to a file, it is easier to print in a file here
         sys.stdout = open(PDBFILE, 'w')
+        # print header
         print(f"CRYST1   {self.header.Xlim[1]}   {self.header.Ylim[1]}\
                {self.header.Zlim[1]}  90 90 90   P1   1")
         # loop over all records in the atoms dataframe
         for i, _ in enumerate(self.atoms):
+            # define an empty list with the size of a standard PDB
             line_list = [' ']*79
             line_list[0:4] = [i for i in 'ATOM']
             line_list[6:11] = [i for i in str(self.atoms.iloc[i]['atom_id'])]
@@ -458,6 +461,7 @@ class PDB:
             line_list[61:66] = [i for i in f"{1.0:6.2f}"]
             print("".join(str(item) for item in line_list))
         print('END\n')
+        # return sys.std to terminal again
         sys.stdout = sys.__stdout__
 
 
