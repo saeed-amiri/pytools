@@ -1,36 +1,30 @@
-import sys
+import typing
+import os, sys, re
 import pandas as pd
 import numpy as np
-import re
-
 
 class DOC:
     """
     A script to correct the bond problem in LAMMPS's write_data
-    command and the boundary conditions. These scripts read the
-    data file from write_data, check the distance between particles
-    that have a bond between them; if the distance between two
-    particles that have shared a bond is bigger than the HALF OF
-    THE BOX SIZE, move the particle, with smaller x|y|z close to the
-    other one, i.e., just adding the length of the box to the x|y|z
-    component.
-        - It read DATAFILE and check the header.
-        - write the number of header lines in the screen
-        - read atoms
-        - read the bonds, angles, angles, dihedrals, ...
-
-    The script is wrote for DATAFILE which have hybrid style, i.e.:
-
+    command and the boundary conditions.
+    These scripts read the data file from write_data, check the 
+    distance between particles that have a bond between them;
+    if the distance between two particles that have shared a bond is
+    bigger than the HALF OF THE BOX SIZE, move the particle,with
+    smaller z close to the other one, i.e., just adding the length of
+    the box to the z component.
+    The script is wrote for INFILE which have hybrid style, i.e.:
+    
     Pair Coeffs # lj/cut/coul/long
 
     1 lj/cut/coul/long 0.1553 3.166
     2 lj/cut/coul/long 0 0
-
+    
     Bond Coeffs # harmonic
 
     1 harmonic 600 1
     2 harmonic 268 1.526
-
+    
     Angle Coeffs # harmonic
 
     1 harmonic 75 109.47
@@ -40,28 +34,15 @@ class DOC:
 
     1 opls 1.3 -0.05 0.2 0
     2 opls 0 0 0.3 0
-
+    
     usages: {sys.argv[0]} system.data
-
-    2022.05.14
-    _____________________________________________
-
-    The problems:
-        - many repeated loop the correct the data
-        - read all the data, we only need a skin in the size of
-            chain length of the molecule
-        - output to be readable by both OVITO and LAMMPS
-    01.06.2022
     """
-
-
-MOLNUMBER = 32
 
 
 class FILEERROR:
     """
-    there is problem in the header of the DATAFILE,
-    maybe long header!\n
+    there is problem in the header of the INFILE,
+    maybe a long header!\n
     """
 
 
@@ -70,10 +51,25 @@ class HEADER:
     read haeder data of the data file
     check the number of the lines, atom, bond ... informations
     get the box , pairs, ... coefficents
+    Use this class to read the header of the file (LAMMPS data file),
+    and the file should have Masses with their name specified after (#)
+    e.g.:
+
+        Masses
+
+        1 1.008000 # H
+        2 16.000000 # OH
+        3 16.000000 # OB
+        4 28.059999 # Si
+
+    it will return a few attributes for the class if they existed:
+    Masses, Pair, and Angel and Dihedral coefficients. And also the name
+    of the atoms types.
+    The class BODY needs' names' to read the data file.
     """
 
     def __init__(self) -> None:
-        self.atomsLine = 0
+        self.atomsLine: int = 0
         self.atomsLine = self.check_file()
         print(f'number of header lines: {self.atomsLine}\n')
         self.read_header()
@@ -81,20 +77,19 @@ class HEADER:
     def check_file(self) -> int:
         """ Check header
         input:
-            - DATAFILE (lammps data file)
+            - INFILE (lammps data file)
         output:
             - number of header lines
         """
-        # An integer to prevent overreading in case of header bugs
-        MAXHEADER = 1000
+        # An integer to prevent over-reading in case of header bugs
+        MAXHEADER: int = 1000
         # track the number of lines in the hedaer
-        linecount = 0
-        with open(DATAFILE, 'r') as f:
+        linecount: int = 0
+        with open(INFILE, 'r') as f:
             while True:
                 linecount += 1
                 line = f.readline()
-                if line.startswith('Atoms'):
-                    FILECHECK = True
+                if line.strip().startswith('Atoms'):
                     atomsLine = linecount
                     break
                 if linecount > MAXHEADER:
@@ -104,23 +99,23 @@ class HEADER:
                     exit("wrong data file\n")
         return atomsLine
 
-    def read_header(self):
+    def read_header(self) -> None:
         """read header to get all the available info
-        Read header now get data
+        Read header now and get the data
         """
         # Setting dictionaries to save data of each block in the header
-        self.Masses, self.PairCoeff, self.BondCoeff, self.AngleCoeff,\
-            self.DihedralCoeff = dict(), dict(), dict(), dict(), dict()
+        self.set_attrs()
         # Setting flags to save data correctly
         Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
             = False, False, False, False, False, False
         # Track the number of lines
-        linecount = 0
-        with open(DATAFILE, 'r') as f:
+        linecount: int = 0
+        with open(INFILE, 'r') as f:
             while True:
                 linecount += 1
-                line = f.readline()
-                # self.process_type_box(line)
+                if linecount > self.atomsLine:
+                    break
+                line: str = f.readline()
                 if line.strip().endswith("atoms"):
                     self.NATOMS = int(line.strip().split(' ')[0])
                 elif line.strip().endswith("atom types"):
@@ -143,160 +138,270 @@ class HEADER:
                     self.Ylim = self.get_axis_lim(line.strip().split('ylo')[0])
                 elif line.strip().endswith("zhi"):
                     self.Zlim = self.get_axis_lim(line.strip().split('zlo')[0])
+                # setting up Flages for reading the cards of data in the file
                 elif line.strip().startswith("Masses"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
-                         = True, False, False, False, False, False
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff,\
+                        Atoms = True, False, False, False, False, False
                 elif line.strip().startswith("Pair"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
-                        = False, True, False, False, False, False
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff,\
+                        Atoms = False, True, False, False, False, False
                 elif line.strip().startswith("Bond Coeffs"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
-                        = False, False, True, False, False, False
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff,\
+                        Atoms = False, False, True, False, False, False
                 elif line.strip().startswith("Angle Coeffs"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
-                        = False, False, False, True, False, False
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff,\
+                        Atoms = False, False, False, True, False, False
                 elif line.strip().startswith("Dihedral Coeffs"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
-                        = False, False, False, False, True, False
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff,\
+                        Atoms = False, False, False, False, True, False
                 elif line.strip().startswith("Atoms"):
-                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff, Atoms\
-                        = False, False, False, False, False, True
+                    Masses, PairCoeff, BondCoeff, AngleCoeff, DihedralCoeff,\
+                        Atoms = False, False, False, False, False, True
                 elif line.strip():
                     if Masses:
                         self.get_masses(line.strip(), 'Masses')
-                    if PairCoeff:
+                    elif PairCoeff:
                         self.get_pair_coeff(line.strip(), 'Pair')
-                    if BondCoeff:
+                    elif BondCoeff:
                         self.get_bond_coeff(line.strip(), 'Bond')
-                    if AngleCoeff:
+                    elif AngleCoeff:
                         self.get_angle_coeff(line.strip(), 'Angle')
-                    if DihedralCoeff:
+                    elif DihedralCoeff:
                         self.get_dihedral_coeff(line.strip(), 'Dihedral')
                 if Atoms:
                     break
                 if not line:
                     break
 
+    def set_attrs(self) -> None:
+        self.Names: dict[int, str] = dict()
+        self.Masses: dict[int, float] = dict()
+        self.PairCoeff: dict[int, typing.Any] = dict()
+        self.BondCoeff: dict[int, typing.Any] = dict()
+        self.AngleCoeff: dict[int, typing.Any] = dict()
+        self.DihedralCoeff: dict[int, typing.Any] = dict()
+
     def get_axis_lim(self, lim) -> list:
         lim = lim.split(' ')
         lim = [float(item) for item in lim if item]
         return lim
 
-    def get_masses(self, line, check) -> dict:
+    def get_masses(self, line, check) -> None:
+        # stting the nth row of the dictionary
         if check not in line:
-            typ = line.split(' ')[0]
+            typ = int(line.split(' ')[0])
             mass = float(line.split(' ')[1])
+            try:
+                atom_name = line.split('#')[1].strip()
+            except IndexError:
+                atom_name = None
             self.Masses[typ] = mass
-        else:
-            pass
+            self.Names[typ] = atom_name
 
-    def get_pair_coeff(self, line, check)-> dict:
-        if check not in line: 
-            line = line.split(' ')
-            typ = line[0]
-            self.PairCoeff[typ]=dict(style=line[1], coeff=line[2:])
-        else: pass
-    
-    def get_bond_coeff(self, line, check)-> dict:
+    def get_pair_coeff(self, line, check) -> None:
+        # stting the nth row of the dictionary
         if check not in line:
             line = line.split(' ')
-            typ = line[0]
-            self.BondCoeff[typ]=dict(style=line[1], coeff=line[2:])
-        else: pass
-        
-    def get_angle_coeff(self, line, check)-> dict:
+            typ = int(line[0])
+            i_style = line[1]
+            i_coeff = line[2:]
+            self.PairCoeff[typ] = dict(
+                                        style=i_style,
+                                        coeff=i_coeff
+                                       )
+
+    def get_bond_coeff(self, line, check) -> None:
+        # stting the nth row of the dictionary
         if check not in line:
             line = line.split(' ')
-            typ = line[0]
-            self.AngleCoeff[typ]=dict(style=line[1], coeff=line[2:])
-        else: pass
-    
-    def get_dihedral_coeff(self, line, check)-> dict:
+            typ = int(line[0])
+            i_style = line[1]
+            i_coeff = line[2:]
+            self.BondCoeff[typ] = dict(
+                                        style=i_style,
+                                        coeff=i_coeff
+                                       )
+
+    def get_angle_coeff(self, line, check) -> None:
+        # stting the nth row of the dictionary
         if check not in line:
             line = line.split(' ')
-            typ = line[0]
-            self.DihedralCoeff[typ]=dict(style=line[1], coeff=line[2:])
-        else: pass
+            typ = int(line[0])
+            i_style = line[1]
+            i_coeff = line[2:]
+            self.AngleCoeff[typ] = dict(
+                                        style=i_style,
+                                        coeff=i_coeff
+                                       )
+
+    def get_dihedral_coeff(self, line, check) -> None:
+        # stting the nth row of the dictionary
+        if check not in line:
+            line = line.split(' ')
+            typ = int(line[0])
+            i_style = line[1]
+            i_coeff = line[2:]
+            self.DihedralCoeff[typ] = dict(
+                                            style=i_style,
+                                            coeff=i_coeff
+                                           )
 
 
-
-
-class BODY():
+class BODY:
     """
     read the data for atoms,velocities, bonds, angles, dihedrals
+    It needs the names of the atoms read by HEADER class
     """
 
-    def __init__(self) -> None:
-        pass
-    
+    def __init__(self, names) -> None:
+        self.Name = names
+        del names
+
     def read_body(self):
-        self.Atoms, self.Velocities, self.Bonds, self.Angles, self.Dihedrals = dict(), dict(), dict(), dict(), dict()
-        Atoms, Velocities, Bonds, Angles, Dihedrals = False, False, False, False, False
-        with open(DATAFILE, 'r') as f:
+        self.Atoms, self.Velocities, self.Bonds, self.Angles, self.Dihedrals\
+            = dict(), dict(), dict(), dict(), dict()
+        Atoms, Velocities, Bonds, Angles, Dihedrals\
+            = False, False, False, False, False
+
+        with open(INFILE, 'r') as f:
             while True:
                 line = f.readline()
                 if line.strip().startswith('Atoms'):
-                    Atoms, Velocities, Bonds, Angles, Dihedrals = True, False, False, False, False
+                    Atoms, Velocities, Bonds, Angles, Dihedrals\
+                        = True, False, False, False, False
                 if line.strip().startswith('Velocities'):
-                    Atoms, Velocities, Bonds, Angles, Dihedrals = False, True, False, False, False
+                    Atoms, Velocities, Bonds, Angles, Dihedrals\
+                        = False, True, False, False, False
                 if line.strip().startswith('Bonds'):
-                    Atoms, Velocities, Bonds, Angles, Dihedrals = False, False, True, False, False
+                    Atoms, Velocities, Bonds, Angles, Dihedrals\
+                        = False, False, True, False, False
                 if line.strip().startswith('Angles'):
-                    Atoms, Velocities, Bonds, Angles, Dihedrals = False, False, False, True, False
+                    Atoms, Velocities, Bonds, Angles, Dihedrals\
+                        = False, False, False, True, False
                 if line.strip().startswith('Dihedrals'):
-                    Atoms, Velocities, Bonds, Angles, Dihedrals = False, False, False, False, True
+                    Atoms, Velocities, Bonds, Angles, Dihedrals\
+                        = False, False, False, False, True
                 if line.strip():
-                    if Atoms :self.get_atoms(line.strip())
-                    if Velocities: self.get_velocities(line.strip())
-                    if Bonds: self.get_bonds(line.strip())
-                    if Angles: self.get_angles(line.strip())
-                    if Dihedrals: self.get_dihedrals(line.strip())
-                if not line: break
-    
-    def get_atoms(self, line) -> dict:
-        if 'Atoms' not in line:
-            line = line.split(" ")
-            line = [item for item in line if item]
-            atom_id = int(line[0])
-            i_mol=int(line[1]); i_typ=int(line[2]); i_charg=float(line[3]) 
-            i_x=float(line[4]);i_y=float(line[5]); i_z=float(line[6])
-            i_nx=str(line[7]); i_ny=str(line[8]); i_nz=str(line[9])
-            self.Atoms[atom_id]=dict(mol=i_mol, typ=i_typ, charg=i_charg, x=i_x,y=i_y, z=i_z, nx=i_nx, ny=i_ny, nz=i_nz)
-        else: pass
+                    if Atoms:
+                        self.get_atoms(line.strip())
+                    if Velocities:
+                        self.get_velocities(line.strip())
+                    if Bonds:
+                        self.get_bonds(line.strip())
+                    if Angles:
+                        self.get_angles(line.strip())
+                    if Dihedrals:
+                        self.get_dihedrals(line.strip())
+                if not line:
+                    break
+            self.Atoms_df = pd.DataFrame.from_dict(
+                            self.Atoms, orient='columns').T
+            self.Bonds_df = pd.DataFrame.from_dict(self.Bonds).T
 
-    def get_velocities(self, line) -> dict:
-        if 'Velocities' not in line:
-            line = line.split(" ")
+    def get_atoms(self, line) -> None:
+        # stting the nth row of the dictionary
+        if 'Atoms' not in line:
+            line = line.split()
             line = [item for item in line if item]
             atom_id = int(line[0])
-            i_vx = float(line[1]); i_vy = float(line[2]); i_vz = float(line[3])
-            self.Velocities[atom_id] = dict(vx = i_vx, vy = i_vy, vz = i_vz)
-        else: pass
-    
-    def get_bonds(self, line) -> dict:
+            i_mol = int(line[1])
+            i_typ = int(line[2])
+            i_charge = float(line[3])
+            i_x = float(line[4])
+            i_y = float(line[5])
+            i_z = float(line[6])
+            i_name = self.Name[i_typ]
+            try:
+                i_nx = int(line[7])
+                i_ny = int(line[8])
+                i_nz = int(line[9])
+            except ValueError:
+                i_nx = 0
+                i_ny = 0
+                i_nz = 0
+            self.Atoms[atom_id] = dict(
+                                        atom_id=atom_id,
+                                        mol=i_mol,
+                                        typ=i_typ,
+                                        charge=i_charge,
+                                        x=i_x,
+                                        y=i_y,
+                                        z=i_z,
+                                        nx=i_nx,
+                                        ny=i_ny,
+                                        nz=i_nz,
+                                        cmt='#',
+                                        name=i_name
+                                       )
+
+    def get_velocities(self, line) -> None:
+        # stting the nth row of the dictionary
+        if 'Velocities' not in line:
+            line = line.split()
+            line = [item for item in line if item]
+            atom_id = int(line[0])
+            i_vx = float(line[1])
+            i_vy = float(line[2])
+            i_vz = float(line[3])
+            self.Velocities[atom_id] = dict(
+                                             vx=i_vx,
+                                             vy=i_vy,
+                                             vz=i_vz
+                                            )
+
+    def get_bonds(self, line) -> None:
+        # stting the nth row of the dictionary
         if 'Bonds' not in line:
-            line = line.split(" ")
+            line = line.split()
             line = [int(item) for item in line if item]
             bond_id = line[0]
-            i_typ = line[1]; i_ai = line[2]; i_aj = line[3]
-            self.Bonds[bond_id] = dict(typ = i_typ, ai = i_ai, aj = i_aj)
-        else: pass
+            i_typ = int(line[1])
+            i_ai = int(line[2])
+            i_aj = int(line[3])
+            self.Bonds[bond_id] = dict(
+                                        typ=i_typ,
+                                        ai=i_ai,
+                                        aj=i_aj
+                                       )
 
-    def get_angles(self, line) -> dict:
+    def get_angles(self, line) -> None:
+        # stting the nth row of the dictionary
         if "Angles" not in line:
-            line = line.split(" ")
+            line = line.split()
             line = [int(item) for item in line if item]
             angle_id = line[0]
-            i_typ = line[1]; i_ai = line[2]; i_aj = line[3]; i_ak = line[4]
-            self.Angles[angle_id] = dict(typ = i_typ, ai = i_ai, aj = i_aj, ak = i_ak)
+            i_typ = int(line[1])
+            i_ai = int(line[2])
+            i_aj = int(line[3])
+            i_ak = int(line[4])
+            self.Angles[angle_id] = dict(
+                                         typ=i_typ,
+                                         ai=i_ai,
+                                         aj=i_aj,
+                                         ak=i_ak
+                                        )
 
-    def get_dihedrals(self, line) -> dict:
+    def get_dihedrals(self, line) -> None:
+        # stting the nth row of the dictionary
         if "Dihedrals" not in line:
-            line = line.split(" ")
+            line = line.split()
             line = [int(item) for item in line if item]
             dihedrals_id = line[0]
-            i_typ = line[1]; i_ai = line[2]; i_aj = line[3]; i_ak = line[4]; i_ah = line[5]
-            self.Dihedrals[dihedrals_id] = dict(typ = i_typ, ai = i_ai, aj = i_aj, ak = i_ak, ah = i_ah)
+            i_typ = int(line[1])
+            i_ai = int(line[2])
+            i_aj = int(line[3])
+            i_ak = int(line[4])
+            i_ah = int(line[5])
+            self.Dihedrals[dihedrals_id] = dict(
+                                                 typ=i_typ,
+                                                 ai=i_ai,
+                                                 aj=i_aj,
+                                                 ak=i_ak,
+                                                 ah=i_ah
+                                                )
+
+
+
 
 class UPDATE:
     """
@@ -315,101 +420,21 @@ class UPDATE:
         self.boxz = self.header.Zlim[1]-self.header.Zlim[0]
 
     def check_bonds(self):
-        for bond in range(1,len(self.Bonds)+1):
-            ai = self.Bonds[bond]['ai']
-            aj = self.Bonds[bond]['aj']
-            self.check_coords(ai, aj)
-        for bond in range(1,len(self.Bonds)+1):
-            ai = self.Bonds[bond]['ai']
-            aj = self.Bonds[bond]['aj']
-            self.check_coords(ai, aj)
-        for bond in range(1,len(self.Bonds)+1):
-            ai = self.Bonds[bond]['ai']
-            aj = self.Bonds[bond]['aj']
-            self.check_coords(ai, aj)
-        for bond in range(1,len(self.Bonds)+1):
-            ai = self.Bonds[bond]['ai']
-            aj = self.Bonds[bond]['aj']
-            self.check_coords(ai, aj)
-        for bond in range(1,len(self.Bonds)+1):
-            ai = self.Bonds[bond]['ai']
-            aj = self.Bonds[bond]['aj']
-            self.check_coords(ai, aj)
-        for bond in range(1,len(self.Bonds)+1):
-            ai = self.Bonds[bond]['ai']
-            aj = self.Bonds[bond]['aj']
-            self.check_coords(ai, aj)
-        for bond in range(1,len(self.Bonds)+1):
-            ai = self.Bonds[bond]['ai']
-            aj = self.Bonds[bond]['aj']
-            self.check_coords(ai, aj)
-        for bond in range(1,len(self.Bonds)+1):
-            ai = self.Bonds[bond]['ai']
-            aj = self.Bonds[bond]['aj']
-            self.check_coords(ai, aj)
-        self.df = pd.DataFrame(self.Atoms).T
-        self.check_box()
-        # self.check_bonds_mol()
+        pass
 
     def check_box(self):
         self.XMIN = np.min(self.df.x); self.XMAX = np.max(self.df.x)
         self.YMIN = np.min(self.df.y); self.YMAX = np.max(self.df.y)
         self.ZMIN = np.min(self.df.z); self.ZMAX = np.max(self.df.z)
 
-            
-
     def check_coords(self, ai, aj):
-        axis = ['x', 'y', 'z']
-        lims = [self.boxx, self.boxy, self.boxz]
-        for ax, lim in zip(axis, lims):
-            xi = self.Atoms[ai][ax]
-            xj = self.Atoms[aj][ax]
-            distance = np.abs(xi - xj)
-            if self.Atoms[ai]['mol'] != self.Atoms[aj]['mol']:
-                exit(f'DIFFRENT MOLECULE ID{ai}-{aj}')
-            else:    
-                if distance > lim*0.25:
-                    if xi < xj: 
-                        xi += lim
-                    else: 
-                        xj += lim
-                    self.Atoms[ai][ax] = xi
-                    self.Atoms[aj][ax] = xj
+        pass
 
     def check_bonds_mol(self):
-        NMOLS = set(self.df.mol)
-        nnn=200
-        for m in range(nnn, nnn+1):
-            mol_df = self.df.groupby(self.df.mol).get_group(m)
-            mol_df = mol_df.astype({'x':float,'y':float,'z':float})
-            print(mol_df)
-            # print(mol_df.index)
-            mol_df.x-=mol_df.x.min()
-            mol_df.y-=mol_df.y.min()
-            mol_df.z-=mol_df.z.min()
-            print(mol_df)
-            MAXX = mol_df.x.max()
-            MAXY = mol_df.y.max()
-            MAXZ = mol_df.z.max()
-            # print(m, mol_df.x.idxmax())
-            #while MAXZ > self.boxz*0.5:
-            #    xid = mol_df.z.idxmax()
-            #    xi = mol_df.z[xid]
-            #    print(m, mol_df.z.idxmax(), MAXZ)
-            #    mol_df.loc[mol_df.z.max(), 'z'] =  xi-self.boxz
-            #    # mol_df['z'][xid] = xi-self.boxz
-            #    # print(m ,mol_df.z.max(),MAXX,MAXY,MAXZ)
-            #    # mol_df.x[mol_df.x.idxmax()]-=self.boxx
-            #    MAXZ = mol_df.z.max()
-        # self.return_tobox(mol_df)
-        # while MINX > 0.25*self.boxx:
-            # print(mol_df.x.min())
+        pass
 
     def return_tobox(self, df):
-        # max_id = df['x'].idxmax()
-        # print(df.iloc[max_id])
-        x, y=5,5
-        
+        pass        
         
 
 
@@ -419,27 +444,10 @@ if __name__ == "__main__":
     if len(sys.argv)==1:
         doc = DOC()
         exit(f'\nONE INPUT IS RWUIRED\n{doc.__doc__}')
-    DATAFILE = sys.argv[1]
-    OUTEX = DATAFILE.split('.')[0]
+    INFILE = sys.argv[1]
+    OUTEX = INFILE.split('.')[0]
     header = HEADER()
-    body = BODY()
+    body = BODY(header.Names)
     body.read_body()
     update = UPDATE(body.Bonds, body.Atoms, header)
     update.check_bonds()
-    df = pd.DataFrame(update.Atoms).T
-    df = df.sort_index(axis=0)
-    df.to_csv(f'atoms.{OUTEX}', index=True, header=None, sep=' ')
-    df = pd.DataFrame(update.Bonds).T
-    df = df.sort_index(axis=0)
-    df.to_csv(f'bonds.{OUTEX}', index=True, header=None, sep=' ')
-    df = pd.DataFrame(body.Angles).T
-    df.sort_index(axis=0)
-    df.to_csv(f'angles.{OUTEX}', index=True, header=None, sep=' ')
-    df = pd.DataFrame(body.Dihedrals).T
-    df.sort_index(axis=0)
-    df.to_csv(f'dihedrals.{OUTEX}', index=True, header=None, sep=' ')
-
-    with open(f'box.{OUTEX}', 'w') as f:
-        f.write(f'{update.XMIN} {update.XMAX} xlo xhi\n')
-        f.write(f'{update.YMIN} {update.YMAX} ylo yhi\n')
-        f.write(f'{update.ZMIN} {update.ZMAX} zlo zhi\n')
