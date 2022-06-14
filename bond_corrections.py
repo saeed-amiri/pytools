@@ -1,30 +1,36 @@
 import typing
-import os, sys, re
+import sys
 import pandas as pd
 import numpy as np
+
 
 class DOC:
     """
     A script to correct the bond problem in LAMMPS's write_data
     command and the boundary conditions.
-    These scripts read the data file from write_data, check the 
+    These scripts read the data file from write_data, check the
     distance between particles that have a bond between them;
     if the distance between two particles that have shared a bond is
     bigger than the HALF OF THE BOX SIZE, move the particle,with
     smaller z close to the other one, i.e., just adding the length of
     the box to the z component.
+    [ checking PEP8
+        ~/.local/bin/pycodestyle bond_corrections.py
+        and typing"
+        ~/.local/bin/mypy bond_corrections.py
+    ]
     The script is wrote for INFILE which have hybrid style, i.e.:
-    
+
     Pair Coeffs # lj/cut/coul/long
 
     1 lj/cut/coul/long 0.1553 3.166
     2 lj/cut/coul/long 0 0
-    
+
     Bond Coeffs # harmonic
 
     1 harmonic 600 1
     2 harmonic 268 1.526
-    
+
     Angle Coeffs # harmonic
 
     1 harmonic 75 109.47
@@ -34,7 +40,7 @@ class DOC:
 
     1 opls 1.3 -0.05 0.2 0
     2 opls 0 0 0.3 0
-    
+
     usages: {sys.argv[0]} system.data
     """
 
@@ -401,47 +407,82 @@ class BODY:
                                                 )
 
 
-
-
 class UPDATE:
     """
     Update data, checking the bonds
+    Based on the this:
+    https://docs.lammps.org/2001/data_format.html
+    nx, ny, and nz:
+    ``The final 3 nx,ny,nz values on a line of the Atoms entry are optional.
+    LAMMPS only reads them if the "true flag" command is specified in
+    the input command script. Otherwise they are initialized to 0 by
+    LAMMPS.
+    Their meaning, for each dimension, is that "n" box-lengths are
+    added to xyz to get the atom's "true" un-remapped position.
+    This can be useful in pre- or post-processing to enable the
+    unwrapping of long-chained molecules which wind thru the periodic
+    box one or more times. The value of "n" can be positive, negative,
+    or zero. For 2-d simulations specify nz as 0.``
+
+    Here I add the n * box to each coordinates!
+
+
     """
     def __init__(self, Bonds, Atoms, header) -> None:
         self.Bonds = Bonds
         self.Atoms = Atoms
         self.header = header
-        self.get_sizes()
         del Bonds, Atoms, header
 
-    def get_sizes(self):
+    def update_atoms(self) -> None:
+        self.set_sizes()
+        xyz_array = self.conver_to_array()
+        new_xyz = self.crct_coord(xyz_array)
+        df = self.shift_atoms(new_xyz)
+
+    def set_sizes(self):
         self.boxx = self.header.Xlim[1]-self.header.Xlim[0]
         self.boxy = self.header.Ylim[1]-self.header.Ylim[0]
         self.boxz = self.header.Zlim[1]-self.header.Zlim[0]
 
-    def check_bonds(self):
+    def set_extermun(self):
+        self.XMIN = np.min(self.df.x)
+        self.XMAX = np.max(self.df.x)
+        self.YMIN = np.min(self.df.y)
+        self.YMAX = np.max(self.df.y)
+        self.ZMIN = np.min(self.df.z)
+        self.ZMAX = np.max(self.df.z)
+
+    def conver_to_array(self) -> np.array:
+        """convert xyz nx ny nz to array"""
+        # first sort the df based on the atom id
+        self.Atoms = self.Atoms.sort_values(by=['atom_id'])
+        # convert to np.array
+        columns = ['x', 'y', 'z', 'nx', 'ny', 'nz']
+        xyz_array = self.Atoms[columns].to_numpy()
+        return xyz_array
+    
+    def crct_coord(self, xyz: np.array) -> np.array:
+        """based on the last three, update the first three coulmns"""
+        for i in xyz:
+            i[0] += self.boxx*i[3]
+            i[1] += self.boxx*i[4]
+            i[2] += self.boxx*i[5]
+        return xyz
+    
+    def shift_atoms(self, xyz: np.array) -> pd.DataFrame:
+        """conver the updated the array atoms coordinates to DataFrame"""
+        columns = ['x', 'y', 'z', 'nx', 'ny', 'nz']
+        df = pd.DataFrame(xyz, columns=columns)
+        return df
+
+    def mk_atoms(self, df: pd.DataFrame) -> pd.DataFrame:
+        """add the other columns of the atoms card to the new atom DataFrame"""
         pass
-
-    def check_box(self):
-        self.XMIN = np.min(self.df.x); self.XMAX = np.max(self.df.x)
-        self.YMIN = np.min(self.df.y); self.YMAX = np.max(self.df.y)
-        self.ZMIN = np.min(self.df.z); self.ZMAX = np.max(self.df.z)
-
-    def check_coords(self, ai, aj):
-        pass
-
-    def check_bonds_mol(self):
-        pass
-
-    def return_tobox(self, df):
-        pass        
-        
-
-
 
 if __name__ == "__main__":
-    # check the input file 
-    if len(sys.argv)==1:
+    # check the input file
+    if len(sys.argv) == 1:
         doc = DOC()
         exit(f'\nONE INPUT IS RWUIRED\n{doc.__doc__}')
     INFILE = sys.argv[1]
@@ -449,5 +490,5 @@ if __name__ == "__main__":
     header = HEADER()
     body = BODY(header.Names)
     body.read_body()
-    update = UPDATE(body.Bonds, body.Atoms, header)
-    update.check_bonds()
+    update = UPDATE(body.Bonds, body.Atoms_df, header)
+    update.update_atoms()
