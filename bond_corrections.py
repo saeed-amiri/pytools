@@ -1,4 +1,5 @@
 import typing
+from typing import Type
 import sys
 import pandas as pd
 import numpy as np
@@ -407,7 +408,7 @@ class BODY:
                                                 )
 
 
-class UPDATE:
+class UpdateAtomsDf:
     """
     Update data, checking the bonds
     Based on the this:
@@ -439,6 +440,8 @@ class UPDATE:
         xyz_array = self.conver_to_array()
         new_xyz = self.crct_coord(xyz_array)
         df = self.shift_atoms(new_xyz)
+        self.new_atoms = self.mk_atoms_df(df)
+        print(self.new_atoms)
 
     def set_sizes(self):
         self.boxx = self.header.Xlim[1]-self.header.Xlim[0]
@@ -461,24 +464,130 @@ class UPDATE:
         columns = ['x', 'y', 'z', 'nx', 'ny', 'nz']
         xyz_array = self.Atoms[columns].to_numpy()
         return xyz_array
-    
+
     def crct_coord(self, xyz: np.array) -> np.array:
         """based on the last three, update the first three coulmns"""
         for i in xyz:
+            print(i)
             i[0] += self.boxx*i[3]
             i[1] += self.boxx*i[4]
             i[2] += self.boxx*i[5]
         return xyz
-    
+
     def shift_atoms(self, xyz: np.array) -> pd.DataFrame:
         """conver the updated the array atoms coordinates to DataFrame"""
         columns = ['x', 'y', 'z', 'nx', 'ny', 'nz']
         df = pd.DataFrame(xyz, columns=columns)
         return df
 
-    def mk_atoms(self, df: pd.DataFrame) -> pd.DataFrame:
+    def mk_atoms_df(self, df: pd.DataFrame) -> pd.DataFrame:
         """add the other columns of the atoms card to the new atom DataFrame"""
-        pass
+        # list of header of columns to add to the DataFrame
+        headers: list[str] = ['atom_id', 'typ', 'mol', 'charge', 'cmt', 'name']
+        # copy the index so that they have same range: [1:]
+        df.index = self.Atoms.index
+        # set the columns
+        for head in headers:
+            df[head] = self.Atoms[head]
+        return df
+
+
+class WriteData:
+    """Write LAMMPS data file
+    Input:
+        Updated DataFrame from UpdateAtomsDf and infos from Header class
+    Ouptput:
+        A Lammps data file
+    """
+
+    def __init__(self,
+                 atoms: pd.DataFrame,
+                 bonds: pd.DataFrame,
+                 Masses: pd.DataFrame) -> None:
+
+        self.atoms = atoms
+        self.bonds = bonds
+        self.Masses = Masses
+        del atoms, bonds, Masses
+
+    def write_lmp(self) -> None:
+        """calling function to write data into a file"""
+        # find box sizes
+        self.set_box()
+        # get number of atoms, types, bonds
+        self.set_numbers()
+        # write file
+        self.write_data()
+        print(self.atoms['charge'].sum())
+
+    def set_box(self) -> None:
+        """find Max and Min of the data"""
+        self.xlim = (self.atoms.x.min(), self.atoms.x.max())
+        self.ylim = (self.atoms.y.min(), self.atoms.y.max())
+        self.zlim = (self.atoms.z.min(), self.atoms.z.max())
+
+    def set_numbers(self) -> None:
+        """set the numbers of atoms, type, bonds"""
+        self.Natoms = len(self.atoms)
+        self.Nbonds = len(self.bonds)
+        self.Natoms_type = np.max(self.atoms.typ)
+        self.Nbonds_type = np.max(self.bonds.typ)
+
+    def set_totals(self) -> None:
+        """set the total numbers of charges, ..."""
+        self.Tcharge = self.atoms['charge'].sum()
+
+    def write_data(self) -> None:
+        """write LAMMPS data file
+        order of calling is important"""
+        with open(OUTFILE, 'w') as f:
+            f.write(f"Data file from Ole Nikle for silica slab\n")
+            f.write(f"\n")
+            self.write_numbers(f)
+            self.write_box(f)
+            self.write_masses(f)
+            self.write_atoms(f)
+            self.write_bonds(f)
+
+    def write_numbers(self, f: typing.TextIO) -> None:
+        f.write(f"{self.Natoms} atoms\n")
+        f.write(f"{self.Natoms_type} atom types\n")
+        f.write(f"{self.Nbonds} bonds\n")
+        f.write(f"{self.Nbonds_type} bond types\n")
+        f.write(f"\n")
+
+    def write_box(self, f: typing.TextIO) -> None:
+        f.write(f"{self.xlim[0]:.3f} {self.xlim[1]:.3f} xlo xhi\n")
+        f.write(f"{self.ylim[0]:.3f} {self.ylim[1]:.3f} ylo yhi\n")
+        f.write(f"{self.zlim[0]:.3f} {self.zlim[1]:.3f} zlo zhi\n")
+        f.write(f"\n")
+
+    def write_masses(self, f: typing.TextIO) -> None:
+        f.write(f"Masses\n")
+        f.write(f"\n")
+        for k, v in self.Masses.items():
+            if k < 5:
+                f.write(f"{k} {v:.5f}\n")
+        f.write(f"\n")
+
+    def write_atoms(self, f: typing.TextIO) -> None:
+        """Write atoms section inot file"""
+        f.write(f"Atoms # full\n")
+        f.write(f"\n")
+        columns = ['mol', 'typ', 'charge', 'x', 'y', 'z', 'nx', 'ny', 'nz',
+                   'cmt', 'name']
+        self.atoms.to_csv(f, sep=' ', index=True, columns=columns,
+                          header=None)
+        f.write(f"\n")
+        f.write(f"\n")
+
+    def write_bonds(self, f: typing.TextIO) -> None:
+        f.write(f"Bonds\n")
+        f.write(f"\n")
+        columns = [ 'typ', 'ai', 'aj']
+        self.bonds.to_csv(f, sep=' ', index=True, columns=columns,
+                          header=None)
+
 
 if __name__ == "__main__":
     # check the input file
@@ -486,9 +595,12 @@ if __name__ == "__main__":
         doc = DOC()
         exit(f'\nONE INPUT IS RWUIRED\n{doc.__doc__}')
     INFILE = sys.argv[1]
-    OUTEX = INFILE.split('.')[0]
+    OUTFILE = INFILE.split('.')[0] + 'crct.data'
     header = HEADER()
     body = BODY(header.Names)
     body.read_body()
-    update = UPDATE(body.Bonds, body.Atoms_df, header)
+    print(body.Bonds_df)
+    update = UpdateAtomsDf(body.Bonds, body.Atoms_df, header)
     update.update_atoms()
+    lmpData = WriteData(update.new_atoms, body.Bonds_df, header.Masses)
+    lmpData.write_lmp()
