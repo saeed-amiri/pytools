@@ -468,8 +468,8 @@ class UpdateAtomsDf:
         """based on the last three, update the first three coulmns"""
         for i in xyz:
             i[0] += self.boxx*i[3]
-            i[1] += self.boxx*i[4]
-            i[2] += self.boxx*i[5]
+            i[1] += self.boxy*i[4]
+            i[2] += self.boxz*i[5]
         return xyz
 
     def shift_atoms(self, xyz: np.array) -> pd.DataFrame:
