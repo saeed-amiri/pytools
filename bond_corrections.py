@@ -441,7 +441,6 @@ class UpdateAtomsDf:
         new_xyz = self.crct_coord(xyz_array)
         df = self.shift_atoms(new_xyz)
         self.new_atoms = self.mk_atoms_df(df)
-        print(self.new_atoms)
 
     def set_sizes(self):
         self.boxx = self.header.Xlim[1]-self.header.Xlim[0]
@@ -468,7 +467,6 @@ class UpdateAtomsDf:
     def crct_coord(self, xyz: np.array) -> np.array:
         """based on the last three, update the first three coulmns"""
         for i in xyz:
-            print(i)
             i[0] += self.boxx*i[3]
             i[1] += self.boxx*i[4]
             i[2] += self.boxx*i[5]
@@ -518,7 +516,7 @@ class WriteData:
         self.set_numbers()
         # write file
         self.write_data()
-        print(self.atoms['charge'].sum())
+        # print(self.atoms['charge'].sum())
 
     def set_box(self) -> None:
         """find Max and Min of the data"""
@@ -584,7 +582,7 @@ class WriteData:
     def write_bonds(self, f: typing.TextIO) -> None:
         f.write(f"Bonds\n")
         f.write(f"\n")
-        columns = [ 'typ', 'ai', 'aj']
+        columns = ['typ', 'ai', 'aj']
         self.bonds.to_csv(f, sep=' ', index=True, columns=columns,
                           header=None)
 
@@ -595,11 +593,10 @@ if __name__ == "__main__":
         doc = DOC()
         exit(f'\nONE INPUT IS RWUIRED\n{doc.__doc__}')
     INFILE = sys.argv[1]
-    OUTFILE = INFILE.split('.')[0] + 'crct.data'
+    OUTFILE = INFILE.split('.')[0] + '_crct.data'
     header = HEADER()
     body = BODY(header.Names)
     body.read_body()
-    print(body.Bonds_df)
     update = UpdateAtomsDf(body.Bonds, body.Atoms_df, header)
     update.update_atoms()
     lmpData = WriteData(update.new_atoms, body.Bonds_df, header.Masses)
