@@ -30,18 +30,21 @@ class ReadLog:
         header: str  # A str of the thermo_style
         lines, header = self.get_lines()
         self.df = self.mk_df(lines, header)
+        self.write_df()
 
     def get_lines(self) -> tuple[list[str], str]:
+        run_count: int = 0  # Run counter
         run: bool = False  # If line starts with 'run'
         loop: bool = False  # If line starts with 'Loop'
         step: bool = False  # If line starts with 'Step'
-        line_list: list[str] = []  # To save the thermo line line
         head: str  # To save the columns name for the DataFrame
+        line_list: list[str] = []  # To save the thermo line line
         with open(self.fanme, 'r') as f:
             while True:
                 line = f.readline()
                 if line.strip().startswith('run'):
                     run = True
+                    run_count += 1
                 elif line.strip().startswith('Step'):
                     step = True
                     head = line.strip()
@@ -53,6 +56,8 @@ class ReadLog:
                         line_list.append(line.strip())
                 if not line:
                     break
+        print(f'Number of runs: {run_count}\n'
+              f'header: {head}')
         return line_list, head
 
     def mk_df(self, lines: list[str], header: str) -> pd.DataFrame:
@@ -61,6 +66,7 @@ class ReadLog:
         line_list: list[list[str]] = self.break_lines(lines)
         df = pd.DataFrame(line_list, columns=columns_names)
         df.drop_duplicates(subset=['Step'], inplace=True)
+        df.index += 1
         return df
 
     def break_header(self, header: str) -> list[str]:
@@ -70,6 +76,12 @@ class ReadLog:
         """break the lines of the thermo-lines"""
         temp = [item.split(' ') for item in lines]
         return [[sub_item for sub_item in item if sub_item] for item in temp]
+
+    def write_df(self) -> None:
+        """write the DataFrame to a file"""
+        fout = 'thermo.data'
+        self.df.to_csv(fout, sep=' ')
+        print(f'output file: {fout}')
 
 
 if __name__ == "__main__":
