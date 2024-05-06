@@ -151,6 +151,10 @@ def make_dictionary(cite) -> dict:
             item in cite if '=' in item}
 
 
+def print_stderr(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
 @contextmanager
 def open_file(fname, mode):
     try:
@@ -312,21 +316,25 @@ class Jour2Bib:
     def make_dic(self) -> dict:
         html = [item.strip() for item in self.html]
         return make_dictionary(html)
-    # make "@article" with "doi" as the label for the bibtex
+
     def cock_strudel(self) -> str:
+        """make "@article" with "doi" as the label for the bibtex"""
         self.doi = re.sub('}','',self.make_dic()["doi"])
         # self.paper = lambda paper: expression
         return f'{self.strudel}{self.doi}'
-    # change capitalization of the title
+
     def get_title(self) -> list:
+        """change capitalization of the title"""
         self.title = self.make_dic()['title']
         return f'{{{pretty_title(self.title)}'
-    # change the format of authors names
+
     def get_authors(self) -> list:
+        """change the format of authors names"""
         self.authors = self.make_dic()['author']
         return f'{{{do_firstname(self.authors)}}},'
-    # hyperref the journals
+
     def get_hyper_journal(self) -> str:
+        """hyperref the journals"""
         # some papers or jouranls "bibtex" dosent have "url",
         # its easier to make it!
         self.doi = re.sub('{|}|,|"',"",self.make_dic()['doi'])
@@ -342,9 +350,9 @@ class Jour2Bib:
         return re.sub(r"[A-Za-z]+('[A-Za-z]+)?",
                       lambda mo: mo.group(0).capitalize(), s)
 
-    # Some papers' bibtex doesnt have title!!!!!!!!!! 
-    def check_bib(self,bibtext) -> str:
-        check_list=['author','title']
+    def check_bib(self, bibtext) -> str:
+        """Some papers' bibtex doesnt have title!!!!!!!!!! """
+        check_list=['author', 'title']
         for k in check_list:
             if k not in bibtext.keys():
                 print(f'\n"{k}" is missing for {self.url}\nNot added to'
