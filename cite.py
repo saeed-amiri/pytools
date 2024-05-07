@@ -385,7 +385,6 @@ class Jour2Bib:
     # pylint: disable=too-many-instance-attributes
     bib: dict[str, str]
     doi: str
-    authors: list[str]
     title: str
     bibtex: str
     html: str
@@ -410,9 +409,12 @@ class Jour2Bib:
         """set the dict by updating the bibtex"""
         self.bib = self.make_dic()
         self.check_bib()
+
         self.bib_text: dict[str, str] = {}
+
         self.bib_text['author'] = self.get_authors()
         self.bib_text['title'] = self.get_title()
+
         if self.strudel.split("@")[1] == 'article':
             self.bib_text['journal'] = self.get_hyper_journal()
         elif self.strudel.split("@")[1] == 'misc':
@@ -449,8 +451,8 @@ class Jour2Bib:
 
     def get_authors(self) -> list:
         """change the format of authors names"""
-        self.authors = self.bib['author']
-        return f'{{{do_firstname(self.authors)}}},'
+        authors = self.bib['author']
+        return f'{{{do_firstname(authors)}}},'
 
     def get_hyper_journal(self) -> str:
         """hyperref the journals"""
@@ -480,7 +482,6 @@ class Jour2Bib:
 
     def _make_dictionary(self, cite) -> dict:
         """make a dictionary from the bibtex"""
-        print_stderr(cite)
         return {item.split("=")[0].strip(): item.split("=")[1].strip() for
                 item in cite if '=' in item}
 
