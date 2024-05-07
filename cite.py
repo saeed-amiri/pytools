@@ -637,7 +637,7 @@ class Isbn2Bib:
         self.get_bib()
         self.bib = [f'{key} = {{{self.bib[key]}}}' for key in self.bib]
 
-    def set_bibtex(self) -> str:
+    def set_bibtex(self) -> None:
         """write the bibtex"""
         # pylint: disable=broad-except
         try:
