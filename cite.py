@@ -231,9 +231,9 @@ class Aux2Url:
             doi for doi in self.doi_list if doi not in self.arxiv or self.book]
         self.journals = [doi for doi in self.journals if '/' in doi]
         # if updating "bib" file
-        self.arxiv = [doi for doi in self.arxiv if doi not in arxiv]
-        self.book = [isbn for isbn in self.book if isbn not in book]
-        self.journals = [doi for doi in self.journals if doi not in journals]
+        self.arxiv = [doi for doi in self.arxiv if doi not in ARXIV]
+        self.book = [isbn for isbn in self.book if isbn not in BOOK]
+        self.journals = [doi for doi in self.journals if doi not in JOURNALS]
 
     def make_url(self) -> list:
         self.check_journals()
@@ -439,30 +439,39 @@ class Book2Bib:
     """
     get bib for books
     """
+    bib: dict[str, str]
+    authors: list[str]
+    title: str
+    bibtex: str
     def __init__(self, isbn) -> int:
         self.isbn = isbn
         print(f"Citting for isbn: {self.isbn}", file=sys.stderr)
 
     # now you can use the service
     def get_html(self):
+        """pass"""
         SERVICE = 'openl'
         self.bibtex = bibformatters['bibtex']
         return self.bibtex(meta(self.isbn, SERVICE))
 
     def make_dic(self) -> dict:
+        """pass"""
         self.html = self.get_html().split("\n")
         html = [item.strip() for item in self.html]
         return make_dictionary(html)
     # change capitalization of the title
 
     def get_title(self) -> list:
+        """pass"""
         self.title = self.make_dic()['title']
         return f'{{{pretty_title(self.title)}'
 
     def cock_strudel(self) -> str:
+        """pass"""
         return f'@book{{isbn:{self.isbn},'
 
     def get_authors(self) -> list:
+        """pass"""
         self.authors = self.make_dic()['author']
         return f'{{{do_firstname(self.authors)}}},'
 
@@ -487,41 +496,50 @@ class ReadBib:
     """
     Reading excisting 'bib' file to update
     """
+    line: str
+    identity: str
     def __init__(self, fname) -> None:
         self.fname = fname
         del fname
 
     def read_bib(self) -> list:
-        with open_file(self.fname, 'r') as f:
-            for line in f:
+        """read the input"""
+        with open_file(self.fname, 'r') as f_in:
+            for line in f_in:
                 if line.startswith('@'):
-                    self.get_id(line)
+                    self.get_identity(line)
 
-    def get_id(self, line) -> str:
+    def get_identity(self, line) -> str:
+        """set the indentity"""
         self.line = line
-        self.id = self.line.split("{")[1][:-2].strip()
-        self.get_list(self.id)
+        self.identity = self.line.split("{")[1][:-2].strip()
+        self.get_list(self.identity)
 
-    def get_list(self, id) -> list:
-        if id.startswith('arxiv'):
-            arxiv.append(id)
-        elif id.startswith('isbn'):
-            book.append(id)
-        elif '/' in id:
-            journals.append(id)
+    def get_list(self, identity) -> list:
+        """get the lists"""
+        if identity.startswith('arxiv'):
+            ARXIV.append(identity)
+        elif identity.startswith('isbn'):
+            BOOK.append(identity)
+        elif '/' in identity:
+            JOURNALS.append(identity)
         else:
             pass
 
     def return_list(self) -> list:
+        """read input"""
         self.read_bib()
-        return arxiv, journals, book
+        return ARXIV, JOURNALS, BOOK
 
 
 class Isbn2Bib:
     """
     getting books bibtex from "https://www.googleapis.com/"
-
     """
+    bib: list[str]
+    _cite: "RequestCite"
+    url: str
+
     def __init__(self, isbn) -> None:
         self.isbn = isbn
         self.fields = ['authors', 'editor', 'title', 'chapter', 'publisher',
@@ -532,9 +550,11 @@ class Isbn2Bib:
         del isbn
 
     def cock_strudel(self) -> str:
+        """return the isbn in style"""
         return f'@book{{isbn:{self.isbn},'
 
     def get_bib(self):
+        """get the bib"""
         self.url = \
             f'https://www.googleapis.com/books/v1/volumes?q=isbn:{self.isbn}'
         self._cite = RequestCite()
@@ -544,16 +564,17 @@ class Isbn2Bib:
         return self.bib
 
     def update_bib(self, text) -> dict:
+        """make the bib"""
         self.bib = \
             {key: value for (key, value) in text.items() if key in self.fields}
         # solving Ashcroft bibtex problem
-        Ashcroft = 0
+        ashcroft = 0
         for i in range(len(self.bib['authors'])):
             word = (self.bib['authors'][i].split(' '))
             if 'Ashcroft' in word:
-                Ashcroft = 1
+                ashcroft = 1
         self.bib['author'] = \
-            do_firstname(str(self.bib['authors'])) if Ashcroft == 0 else \
+            do_firstname(str(self.bib['authors'])) if ashcroft == 0 else \
             do_firstname(str(self.bib['authors'][1:]))
         self.bib['year'] = self.bib['publishedDate']
         self.bib['url'] = self.bib['infoLink']
@@ -565,63 +586,68 @@ class Isbn2Bib:
             self.bib.pop(key, None)
         return self.bib
 
-    def make_bib(self) -> dict:
+    def make_bib(self) -> None:
+        """make the bibtex from the dictionary"""
         self.get_bib()
         self.bib = [f'{key} = {{{self.bib[key]}}}' for key in self.bib]
-        return self.bib
 
     def __str__(self) -> str:
         try:
-            bib = self.make_bib()
+            self.make_bib()
             print(self.cock_strudel())
-            for i, item in enumerate(bib):
-                print(f"\t{item.__add__(',')}") if i != len(bib)-1 else \
-                      print(f"\t{item}")
+            for i, item in enumerate(self.bib):
+                if i != len(self.bib) - 1:
+                    print(f"\t{item + ','}")
+                else:
+                    print(f"\t{item}")
             print("\t}")
-        except:
+        except Exception as _:
             print(f"CANT GET {self.isbn} FROM GOOGLE API", file=sys.stderr)
-            b = Book2Bib(self.isbn)
-            b.__str__()
+            book_bib = Book2Bib(self.isbn)
+            book_bib.__str__()
 
 
 def get_arxiv(url):
-    t = Arxiv2Bib(url)
-    t.__str__()
+    """Get the url info"""
+    tabel = Arxiv2Bib(url)
+    tabel.__str__()
 
 
 def get_journals(url):
-    t = Jour2Bib(url)
-    t.__str__()
+    """Get the url info"""
+    tabel = Jour2Bib(url)
+    tabel.__str__()
 
 
 def get_book(isbn):
-    t = Isbn2Bib(isbn)
-    t.__str__()
+    """Get the url info"""
+    tabel = Isbn2Bib(isbn)
+    tabel.__str__()
 
-source = sys.argv[1].split(".")[0]
-arxiv, journals, book = [], [], []
+SOURCE = sys.argv[1].split('.', maxsplit=1)[0]
+ARXIV, JOURNALS, BOOK = [], [], []
 
 
 if sys.argv[1].split(".")[1] == 'aux':
-    print(f"creating: {source}.bib", file=sys.stderr)
-    bibfile = source.__add__('.bib')
-    sys.stdout = open(bibfile, 'w')
+    print(f"creating: {SOURCE}.bib", file=sys.stderr)
+    BIBFILE = SOURCE + '.bib'
+    sys.stdout = open(BIBFILE, 'w', encoding='utf8')
 elif sys.argv[1].split(".")[1] == 'bib':
-    print(f"updating: {source}.bib", file=sys.stderr)
-    bib = ReadBib(sys.argv[1])
-    arxiv, journals, book = bib.return_list()
-    bibfile = sys.argv[1]
-    sys.stdout = open(bibfile, '+a')
+    print(f"updating: {SOURCE}.bib", file=sys.stderr)
+    BIB = ReadBib(sys.argv[1])
+    ARXIV, JOURNALS, BOOK = BIB.return_list()
+    BIBFILE = sys.argv[1]
+    sys.stdout = open(BIBFILE, '+a', encoding='utf8')
 
 
-aux = Aux2Url(source.__add__('.aux'))
-arxiv, journals, book = aux.make_url()
+aux = Aux2Url(SOURCE + '.aux')
+ARXIV, JOURNALS, BOOK = aux.make_url()
 
 
 with concurrent.futures.ThreadPoolExecutor() as executor:
-    j_papers = executor.map(get_journals, journals)
-    x_papers = executor.map(get_arxiv, arxiv)
-    bok_isbn = executor.map(get_book, book)
+    j_papers = executor.map(get_journals, JOURNALS)
+    x_papers = executor.map(get_arxiv, ARXIV)
+    bok_isbn = executor.map(get_book, BOOK)
 sys.stdout = sys.__stdout__
 finish = time.perf_counter()
 print(f'\nDONE IN {finish-start:.3f} second(s)\n')
