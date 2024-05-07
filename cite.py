@@ -87,7 +87,7 @@ def do_and(authors) -> list:
     if and_count > 1:
         authors = re.sub(' and', '{,}', authors, count=and_count-1)
         authors = re.sub(' and', '{,} and', authors, count=1)
-    return(authors)
+    return authors
 
 
 def do_firstname(authors,
@@ -103,8 +103,6 @@ def do_firstname(authors,
     # authors = re.sub('[^\u00C0-\u017FA-Za-z0-9,]+', ' ', authors)
     if arxiv is None:
         authors = authors[1:-2]
-    else:
-        authors = authors
 
     # remove "and" and "author" and the trailing "c" from the list for
     # now then will put them back
@@ -130,17 +128,17 @@ def do_firstname(authors,
         author_name = []
         name = re.sub(r"^'|'$", '', name)
         # split the name
-        all = name.split(" ")
+        all_name = name.split(" ")
         # keep the first letter of all-name beside lastName
-        for part in all[:-1]:
+        for part in all_name[:-1]:
             if part[0].isupper():
                 author_name.append(f'{part[0]}.')
             else:
                 author_name.append(f' {part}')
         # apoend the lastName
-        if all[-1].isupper():
-            all[-1] = all[-1].title()
-        author_name.append(f' {all[-1]}')
+        if all_name[-1].isupper():
+            all_name[-1] = all_name[-1].title()
+        author_name.append(f' {all_name[-1]}')
         # append the author_name to the others
         names.append("".join(author_name))
 
@@ -189,13 +187,14 @@ def print_stderr(*args, **kwargs):
 
 @contextmanager
 def open_file(fname, mode):
+    """open the file"""
     try:
-        f = open(fname, mode)
-        yield f
+        f_read = open(fname, mode, encoding='utf-8')
+        yield f_read
     except FileNotFoundError:
         sys.exit(f"NO Such a FILE as '{fname}'")
     finally:
-        f.close()
+        f_read.close()
 
 
 # first reading the "aux" tex output file
@@ -203,10 +202,16 @@ class Aux2Url:
     """
     readling 'aux' file, get 'doi' and make 'url'
     """
+    doi_list: list
+    arxiv: list
+    journals: list
+    book: list
+
     def __init__(self, auxfile) -> None:
         self.auxfile = auxfile
 
     def read_aux(self) -> list:
+        """read the 'aux' file"""
         with open_file(self.auxfile, 'r') as aux:
             aux_lines = aux.readlines()
         aux_lines = [
@@ -219,6 +224,7 @@ class Aux2Url:
             list(set(cite.strip() for line in aux_lines for cite in line))
 
     def check_journals(self) -> list:
+        """check the "doi" and seperate them"""
         self.read_aux()
         # lowering the letter cases, just in case!
         self.doi_list = [doi.lower() for doi in self.doi_list]
@@ -236,6 +242,7 @@ class Aux2Url:
         self.journals = [doi for doi in self.journals if doi not in JOURNALS]
 
     def make_url(self) -> list:
+        """make the url for the "doi" and "arxiv" and "isbn" """
         self.check_journals()
         # make "url" for both:
         self.arxiv = [
@@ -250,32 +257,46 @@ class RequestCite:
     """
     make the headers and request
     """
+    requested: str
+    jrnl_header: str
+    header: str
     def __init__(self) -> str:
         self.jrnl_header = {'accept': 'application/x-bibtex'}
         self.arx_header = None
         self.isbn_header = None
 
-    def header(self, url, src) -> str:
+    def get_header(self, url, src) -> None:
+        """set the header for the request"""
         self.header = \
             self.jrnl_header if src == 'journals' else self.arx_header
     # self.header = self.jrnl_header if src == 'journals' else self.arx_header
         print(f"Request for: {url}", file=sys.stderr)
 
     def do_request(self, url, src) -> str:
-        self.header(url, src)
-        self.r = requests.get(url, headers=self.header)
-        if self.r.ok:
-            self.r.encoding = 'utf-8'
+        """get the response from the server"""
+        self.get_header(url, src)
+        self.requested = requests.get(url, headers=self.header)
+        if self.requested.ok:
+            self.requested.encoding = 'utf-8'
             # return the text as a list
-            return self.r.text
-        else:
-            sys.exit(f'Wrong "{url}" or Busy server')
+            return self.requested.text
+        sys.exit(f'Wrong "{url}" or Busy server')
 
 
 class Arxiv2Bib:
     """
     make a citation like the one from other journlas
     """
+    # pylint: disable=too-many-instance-attributes
+    _bib: dict[str, str]
+    authors: list[str]
+    title: str
+    bibtex: str
+    html: list
+    catag: list[str]
+    year: list[str]
+    url: str
+
     def __init__(self, url) -> list:
         self._cit = RequestCite()
         html = self._cit.do_request(url, 'arxiv').split('\n')
@@ -283,12 +304,15 @@ class Arxiv2Bib:
         self.url = url
 
     def get_eprint(self) -> int:
+        """get the eprint"""
         return self.url.split("=")[1]
 
     def cock_strudel(self) -> str:
+        """set the misc situation"""
         return f'@misc{{arxiv:{self.get_eprint()},'
 
     def get_title(self) -> list:
+        """get the title"""
         i_index = [i for i, item in enumerate(self.html) if
                    item.startswith('<title>')][0]
         f_index = [i for i, item in enumerate(self.html) if
@@ -306,33 +330,38 @@ class Arxiv2Bib:
         return " ".join(self.title)
 
     def get_authors(self) -> list:
+        """set the authors names"""
         self.authors = [re.sub('<name>', '', name) for name in self.html if
                         name.startswith('<name>')]
         self.authors = [re.sub('</name>', '', name) for name in self.authors]
         self.authors = " , ".join(self.authors)
-        return do_firstname(self.authors, arxiv=arxiv)
+        return do_firstname(self.authors, arxiv=ARXIV)
 
     def get_date(self) -> int:
+        """line breaking:
+        <updated>2020-11-02T14:00:00Z</updated>
+        """
         self.year = [re.sub('<updated>', '', item) for item in self.html if
                      item.startswith("<updated>")][0]
         return self.year.split("-")
 
     def get_category(self) -> str:
-        # line breaking:
-        # <category term="cond-mat.mtrl-sci" scheme
-        # ="http://arxiv.org/schemas/atom"/>
+        """ line breaking:
+        <category term="cond-mat.mtrl-sci" scheme
+        ="http://arxiv.org/schemas/atom"/>"""
         self.catag = [item.split("term=")[1].split(' ')[0] for item in
                       self.html if item.startswith("<category term=")][0]
         return self.catag.replace('"', '')
 
     def make_dic(self) -> list:
+        """set the html"""
         self._bib = {
             'title': f'{{{self.get_title()}}},',
             'author': f'{{{self.get_authors()}}},',
             'year': f'{{{self.get_date()[0]}}},',
             'month': f'{{{calendar.month_abbr[int(self.get_date()[1])]}.}},',
             'eprint': f'{{{self.get_eprint()}}},',
-            'howpublished': f'{{arXiv}},',
+            'howpublished': '{{arXiv}},',
             'note': (f'{{\href{{https://arxiv.org/abs/{self.get_eprint()}}}'
                      f'{{{self.get_category()}}}}} ')
             }
@@ -350,6 +379,15 @@ class Jour2Bib:
     """
     modifying bibtex from normal journals
     """
+    # pylint: disable=too-many-instance-attributes
+    bib: dict[str, str]
+    doi: str
+    authors: list[str]
+    title: str
+    bibtex: str
+    html: str
+    journal: str
+
     def __init__(self, url) -> None:
         self._cit = RequestCite()
         html = self._cit.do_request(url, 'journals').split('\n')
@@ -359,6 +397,7 @@ class Jour2Bib:
         self.strudel = self.html[0].split("{")[0]
 
     def make_dic(self) -> dict:
+        """set the html"""
         html = [item.strip() for item in self.html]
         return make_dictionary(html)
 
@@ -387,16 +426,16 @@ class Jour2Bib:
         if self.strudel.split("@")[1] == 'article':
             self.journal = self.make_dic()['journal']
             return f"{{\href{{{self.url}}}{self.journal}}}"
-        else:
-            self.journal = self.make_dic()['publisher'][:-1]
-            return f"{{\href{{{self.url}}}{self.journal}}},"
+        self.journal = self.make_dic()['publisher'][:-1]
+        return f"{{\href{{{self.url}}}{self.journal}}},"
 
-    def titlecase(self, s):
+    def titlecase(self, string_in: str) -> str:
+        """capitalize the first letter of the month"""
         return re.sub(r"[A-Za-z]+('[A-Za-z]+)?",
-                      lambda mo: mo.group(0).capitalize(), s)
+                      lambda mo: mo.group(0).capitalize(), string_in)
 
     def check_bib(self, bibtext) -> str:
-        """Some papers' bibtex doesnt have title!!!!!!!!!! """
+        """Some papers' bibtex doesnt have title!!!!!!!!!!"""
         check_list = ['author', 'title']
         for k in check_list:
             if k not in bibtext.keys():
@@ -406,6 +445,7 @@ class Jour2Bib:
 
     # updating the bibtex
     def update_bib(self) -> list:
+        """set the dict"""
         self.bib = self.make_dic()
         self.check_bib(self.bib)
         self.bib['author'] = self.get_authors()
@@ -414,11 +454,11 @@ class Jour2Bib:
             self.bib['journal'] = self.get_hyper_journal()
         elif self.strudel.split("@")[1] == 'misc':
             self.bib['note'] = self.get_hyper_journal()
-            self.bib['title'] = self.bib['title'].__add__(',')
+            self.bib['title'] = self.bib['title'] + ','
         else:
             self.bib['publisher'] = self.get_hyper_journal()
         if 'year' in self.bib:
-            year = (re.sub('{|}|,|"', '', self.bib['year']))
+            year: str = re.sub('{|}|,|"', '', self.bib['year'])
             self.bib['year'] = f'{{{year}}},'
         if 'month' in self.bib:
             self.bib['month'] = self.titlecase(self.bib['month'])
@@ -443,6 +483,7 @@ class Book2Bib:
     authors: list[str]
     title: str
     bibtex: str
+    html: str
     def __init__(self, isbn) -> int:
         self.isbn = isbn
         print(f"Citting for isbn: {self.isbn}", file=sys.stderr)
@@ -450,9 +491,9 @@ class Book2Bib:
     # now you can use the service
     def get_html(self):
         """pass"""
-        SERVICE = 'openl'
+        service = 'openl'
         self.bibtex = bibformatters['bibtex']
-        return self.bibtex(meta(self.isbn, SERVICE))
+        return self.bibtex(meta(self.isbn, service))
 
     def make_dic(self) -> dict:
         """pass"""
@@ -476,6 +517,7 @@ class Book2Bib:
         return f'{{{do_firstname(self.authors)}}},'
 
     def update_bib(self) -> list:
+        """set the dict"""
         self.bib = self.make_dic()
         self.bib['author'] = self.get_authors()
         self.bib['title'] = self.get_title()
@@ -570,7 +612,7 @@ class Isbn2Bib:
         # solving Ashcroft bibtex problem
         ashcroft = 0
         for i in range(len(self.bib['authors'])):
-            word = (self.bib['authors'][i].split(' '))
+            word: str = self.bib['authors'][i].split(' ')
             if 'Ashcroft' in word:
                 ashcroft = 1
         self.bib['author'] = \
@@ -640,8 +682,8 @@ elif sys.argv[1].split(".")[1] == 'bib':
     sys.stdout = open(BIBFILE, '+a', encoding='utf8')
 
 
-aux = Aux2Url(SOURCE + '.aux')
-ARXIV, JOURNALS, BOOK = aux.make_url()
+AUX = Aux2Url(SOURCE + '.aux')
+ARXIV, JOURNALS, BOOK = AUX.make_url()
 
 
 with concurrent.futures.ThreadPoolExecutor() as executor:
