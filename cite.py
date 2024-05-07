@@ -547,7 +547,7 @@ class Isbn2Bib:
         self.bib = \
             {key: value for (key, value) in text.items() if key in self.fields}
         # solving Ashcroft bibtex problem
-        Ashcroft = 528
+        Ashcroft = 0
         for i in range(len(self.bib['authors'])):
             word = (self.bib['authors'][i].split(' '))
             if 'Ashcroft' in word:
@@ -584,6 +584,20 @@ class Isbn2Bib:
             b.__str__()
 
 
+def get_arxiv(url):
+    t = Arxiv2Bib(url)
+    t.__str__()
+
+
+def get_journals(url):
+    t = Jour2Bib(url)
+    t.__str__()
+
+
+def get_book(isbn):
+    t = Isbn2Bib(isbn)
+    t.__str__()
+
 source = sys.argv[1].split(".")[0]
 arxiv, journals, book = [], [], []
 
@@ -602,21 +616,6 @@ elif sys.argv[1].split(".")[1] == 'bib':
 
 aux = Aux2Url(source.__add__('.aux'))
 arxiv, journals, book = aux.make_url()
-
-
-def get_arxiv(url):
-    t = Arxiv2Bib(url)
-    t.__str__()
-
-
-def get_journals(url):
-    t = Jour2Bib(url)
-    t.__str__()
-
-
-def get_book(isbn):
-    t = Isbn2Bib(isbn)
-    t.__str__()
 
 
 with concurrent.futures.ThreadPoolExecutor() as executor:
