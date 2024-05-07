@@ -57,6 +57,8 @@ One module should be installed for the books' bib:
 SAEED AMIRI
 """
 
+# pylint: disable=anomalous-backslash-in-string
+
 import re
 import sys
 import json
@@ -369,7 +371,8 @@ class Arxiv2Bib:
         self._bib.append("}")
         return self._bib
 
-    def __str__(self) -> str:
+    def set_bibtex(self) -> str:
+        """print the bibtex"""
         print(f'{self. cock_strudel()}')
         for item in self.make_dic():
             print(f'\t{item}')
@@ -467,7 +470,7 @@ class Jour2Bib:
         self.bib.append("}")
         return self.bib
 
-    def __str__(self) -> str:
+    def set_bibtex(self) -> str:
         """print bibtex"""
         bib = self.update_bib()
         print(self.cock_strudel())
@@ -527,7 +530,8 @@ class Book2Bib:
         self.bib.append("}")
         return self.bib
 
-    def __str__(self) -> str:
+    def set_bibtex(self) -> str:
+        """write the bibtex"""
         bib = self.update_bib()
         print(self.cock_strudel())
         for i in bib:
@@ -633,7 +637,9 @@ class Isbn2Bib:
         self.get_bib()
         self.bib = [f'{key} = {{{self.bib[key]}}}' for key in self.bib]
 
-    def __str__(self) -> str:
+    def set_bibtex(self) -> str:
+        """write the bibtex"""
+        # pylint: disable=broad-except
         try:
             self.make_bib()
             print(self.cock_strudel())
@@ -646,30 +652,30 @@ class Isbn2Bib:
         except Exception as _:
             print(f"CANT GET {self.isbn} FROM GOOGLE API", file=sys.stderr)
             book_bib = Book2Bib(self.isbn)
-            book_bib.__str__()
+            book_bib.set_bibtex()
 
 
 def get_arxiv(url):
     """Get the url info"""
     tabel = Arxiv2Bib(url)
-    tabel.__str__()
+    tabel.set_bibtex()
 
 
 def get_journals(url):
     """Get the url info"""
     tabel = Jour2Bib(url)
-    tabel.__str__()
+    tabel.set_bibtex()
 
 
 def get_book(isbn):
     """Get the url info"""
     tabel = Isbn2Bib(isbn)
-    tabel.__str__()
+    tabel.set_bibtex()
 
 SOURCE = sys.argv[1].split('.', maxsplit=1)[0]
 ARXIV, JOURNALS, BOOK = [], [], []
 
-
+# pylint: disable=consider-using-with
 if sys.argv[1].split(".")[1] == 'aux':
     print(f"creating: {SOURCE}.bib", file=sys.stderr)
     BIBFILE = SOURCE + '.bib'
@@ -679,7 +685,8 @@ elif sys.argv[1].split(".")[1] == 'bib':
     BIB = ReadBib(sys.argv[1])
     ARXIV, JOURNALS, BOOK = BIB.return_list()
     BIBFILE = sys.argv[1]
-    sys.stdout = open(BIBFILE, '+a', encoding='utf8')
+    with open(BIBFILE, '+a', encoding='utf8') as F_APPEND:
+        sys.stdout = F_APPEND
 
 
 AUX = Aux2Url(SOURCE + '.aux')
