@@ -482,7 +482,7 @@ class Book2Bib:
     """
     get bib for books
     """
-    bib: dict[str, str]
+    
     authors: list[str]
     title: str
     bibtex: str
@@ -521,14 +521,14 @@ class Book2Bib:
 
     def update_bib(self) -> list:
         """set the dict"""
-        self.bib = self.make_dic()
-        self.bib['author'] = self.get_authors()
-        self.bib['title'] = self.get_title()
-        self.bib['publisher'] = f"{self.bib['publisher']},"
-        self.bib['note'] = f'{{ISBN: {self.isbn}}},'
-        self.bib = [f'{key} = {self.bib[key]}' for key in self.bib]
-        self.bib.append("}")
-        return self.bib
+        bib: dict[str, str] = self.make_dic()
+        bib['author'] = self.get_authors()
+        bib['title'] = self.get_title()
+        bib['publisher'] = f"{self.bib['publisher']},"
+        bib['note'] = f'{{ISBN: {self.isbn}}},'
+        bib = [f'{key} = {self.bib[key]}' for key in self.bib]
+        bib.append("}")
+        return bib
 
     def set_bibtex(self) -> str:
         """write the bibtex"""
