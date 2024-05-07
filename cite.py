@@ -399,37 +399,69 @@ class Jour2Bib:
         self.url = url
         self.strudel = self.html[0].split("{")[0]
 
+    def set_bibtex(self) -> str:
+        """print bibtex"""
+        bib = self.update_bib()
+        print(self.cock_strudel())
+        for item in bib:
+            print(f'\t{item}')
+
+    def update_bib(self) -> list:
+        """set the dict by updating the bibtex"""
+        self.bib = self.make_dic()
+        self.check_bib()
+        self.bib_text: dict[str, str] = {}
+        self.bib_text['author'] = self.get_authors()
+        self.bib_text['title'] = self.get_title()
+        if self.strudel.split("@")[1] == 'article':
+            self.bib_text['journal'] = self.get_hyper_journal()
+        elif self.strudel.split("@")[1] == 'misc':
+            self.bib_text['note'] = self.get_hyper_journal()
+            self.bib_text['title'] = self.bib_text['title'] + ','
+        else:
+            self.bib_text['publisher'] = self.get_hyper_journal()
+        if 'year' in self.bib_text:
+            year: str = re.sub('{|}|,|"', '', self.bib_text['year'])
+            self.bib_text['year'] = f'{{{year}}},'
+        if 'month' in self.bib_text:
+            self.bib_text['month'] = self.titlecase(self.bib_text['month'])
+        self.bib_text = \
+            [f'{key} = {self.bib_text[key]}' for key in self.bib_text]
+
+        self.bib_text.append("}")
+        return self.bib_text
+
     def make_dic(self) -> dict:
         """set the html"""
         html = [item.strip() for item in self.html]
-        return make_dictionary(html)
+        return self._make_dictionary(html)
 
     def cock_strudel(self) -> str:
         """make "@article" with "doi" as the label for the bibtex"""
-        self.doi = re.sub('}', '', self.make_dic()["doi"])
+        self.doi = re.sub('}', '', self.bib["doi"])
         # self.paper = lambda paper: expression
         return f'{self.strudel}{self.doi}'
 
     def get_title(self) -> list:
         """change capitalization of the title"""
-        self.title = self.make_dic()['title']
+        self.title = self.bib['title']
         return f'{{{pretty_title(self.title)}'
 
     def get_authors(self) -> list:
         """change the format of authors names"""
-        self.authors = self.make_dic()['author']
+        self.authors = self.bib['author']
         return f'{{{do_firstname(self.authors)}}},'
 
     def get_hyper_journal(self) -> str:
         """hyperref the journals"""
         # some papers or jouranls "bibtex" dosent have "url",
         # its easier to make it!
-        self.doi = re.sub('{|}|,|"', "", self.make_dic()['doi'])
+        self.doi = re.sub('{|}|,|"', "", self.bib['doi'])
         self.url = f"https://doi.org/{self.doi}"
         if self.strudel.split("@")[1] == 'article':
-            self.journal = self.make_dic()['journal']
+            self.journal = self.bib['journal']
             return f"{{\href{{{self.url}}}{self.journal}}}"
-        self.journal = self.make_dic()['publisher'][:-1]
+        self.journal = self.bib['publisher'][:-1]
         return f"{{\href{{{self.url}}}{self.journal}}},"
 
     def titlecase(self, string_in: str) -> str:
@@ -437,45 +469,20 @@ class Jour2Bib:
         return re.sub(r"[A-Za-z]+('[A-Za-z]+)?",
                       lambda mo: mo.group(0).capitalize(), string_in)
 
-    def check_bib(self, bibtext) -> str:
+    def check_bib(self) -> str:
         """Some papers' bibtex doesnt have title!!!!!!!!!!"""
         check_list = ['author', 'title']
         for k in check_list:
-            if k not in bibtext.keys():
+            if k not in self.bib.keys():
                 print(f'\n"{k}" is missing for {self.url}\nNot added to'
                       f' the "bib" file',
                       file=sys.stderr)
 
-    # updating the bibtex
-    def update_bib(self) -> list:
-        """set the dict"""
-        self.bib = self.make_dic()
-        self.check_bib(self.bib)
-        self.bib['author'] = self.get_authors()
-        self.bib['title'] = self.get_title()
-        if self.strudel.split("@")[1] == 'article':
-            self.bib['journal'] = self.get_hyper_journal()
-        elif self.strudel.split("@")[1] == 'misc':
-            self.bib['note'] = self.get_hyper_journal()
-            self.bib['title'] = self.bib['title'] + ','
-        else:
-            self.bib['publisher'] = self.get_hyper_journal()
-        if 'year' in self.bib:
-            year: str = re.sub('{|}|,|"', '', self.bib['year'])
-            self.bib['year'] = f'{{{year}}},'
-        if 'month' in self.bib:
-            self.bib['month'] = self.titlecase(self.bib['month'])
-        self.bib = [f'{key} = {self.bib[key]}' for key in self.bib]
-
-        self.bib.append("}")
-        return self.bib
-
-    def set_bibtex(self) -> str:
-        """print bibtex"""
-        bib = self.update_bib()
-        print(self.cock_strudel())
-        for item in bib:
-            print(f'\t{item}')
+    def _make_dictionary(self, cite) -> dict:
+        """make a dictionary from the bibtex"""
+        print_stderr(cite)
+        return {item.split("=")[0].strip(): item.split("=")[1].strip() for
+                item in cite if '=' in item}
 
 
 class Book2Bib:
