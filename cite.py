@@ -262,6 +262,7 @@ class RequestCite:
     requested: str
     jrnl_header: str
     header: str
+
     def __init__(self) -> str:
         self.jrnl_header = {'accept': 'application/x-bibtex'}
         self.arx_header = None
@@ -391,24 +392,43 @@ class Jour2Bib:
     journal: str
 
     def __init__(self, url) -> None:
+        self.url = url
+        self.make_html(url)
+
+    def make_html(self, url: str) -> None:
+        """make the html string"""
         self._cit = RequestCite()
         html = self._cit.do_request(url, 'journals').split('\n')
-        # print(html,file=sys.stderr)
-        self.html = html
-        self.url = url
-        self.strudel = self.html[0].split("{")[0]
+        self.html = [item.strip() for item in html if item][0]
+        self.strudel = self.html.split("{")[0]
 
     def set_bibtex(self) -> str:
         """print bibtex"""
-        bib = self.update_bib()
+        self.update_bib()
+
         print(self.cock_strudel())
-        for item in bib:
+        for item in self.bib_text:
             print(f'\t{item}')
 
-    def update_bib(self) -> list:
+    def update_bib(self) -> None:
         """set the dict by updating the bibtex"""
-        self.bib = self.make_dic()
-        self.check_bib()
+        try:
+            bib_str = str(self.html)
+            entry_type_key, entries_str = bib_str.split(',', 1)
+            entry_type_key = entry_type_key.strip()
+
+            # Find all key-value pairs
+            entries = re.findall(r'(\w+)=\{([^}]+)\}', entries_str)
+
+            bib_dict = \
+                {'entry_type': entry_type_key[:entry_type_key.index('{')]}
+            bib_dict.update({key: value.strip() for key, value in entries})
+
+            # Display the result
+            self.bib = bib_dict
+        except Exception:
+            print(f'There is something wrong with the entery:\n{self.html}\n',
+                  file=sys.stderr)
 
         self.bib_text: dict[str, str] = {}
 
@@ -431,16 +451,10 @@ class Jour2Bib:
             [f'{key} = {self.bib_text[key]}' for key in self.bib_text]
 
         self.bib_text.append("}")
-        return self.bib_text
-
-    def make_dic(self) -> dict:
-        """set the html"""
-        html = [item.strip() for item in self.html]
-        return self._make_dictionary(html)
 
     def cock_strudel(self) -> str:
         """make "@article" with "doi" as the label for the bibtex"""
-        self.doi = re.sub('}', '', self.bib["doi"])
+        self.doi = re.sub('}', '', self.bib["DOI"])
         # self.paper = lambda paper: expression
         return f'{self.strudel}{self.doi}'
 
@@ -458,7 +472,7 @@ class Jour2Bib:
         """hyperref the journals"""
         # some papers or jouranls "bibtex" dosent have "url",
         # its easier to make it!
-        self.doi = re.sub('{|}|,|"', "", self.bib['doi'])
+        self.doi = re.sub('{|}|,|"', "", self.bib['DOI'])
         self.url = f"https://doi.org/{self.doi}"
         if self.strudel.split("@")[1] == 'article':
             self.journal = self.bib['journal']
@@ -474,6 +488,7 @@ class Jour2Bib:
     def check_bib(self) -> str:
         """Some papers' bibtex doesnt have title!!!!!!!!!!"""
         check_list = ['author', 'title']
+        print_stderr(self.bib.keys())
         for k in check_list:
             if k not in self.bib.keys():
                 print(f'\n"{k}" is missing for {self.url}\nNot added to'
@@ -482,19 +497,21 @@ class Jour2Bib:
 
     def _make_dictionary(self, cite) -> dict:
         """make a dictionary from the bibtex"""
-        return {item.split("=")[0].strip(): item.split("=")[1].strip() for
-                item in cite if '=' in item}
+        cite = re.split(r',(?=[^{}]*{[^{}]*}$)', cite.strip())
+        return {key.strip(): value.strip() for item in cite
+                if '=' in item for key, value in (item.split("=", 1),)}
 
 
 class Book2Bib:
     """
     get bib for books
     """
-    
+
     authors: list[str]
     title: str
     bibtex: str
     html: str
+
     def __init__(self, isbn) -> int:
         self.isbn = isbn
         print(f"Citting for isbn: {self.isbn}", file=sys.stderr)
@@ -552,6 +569,7 @@ class ReadBib:
     """
     line: str
     identity: str
+
     def __init__(self, fname) -> None:
         self.fname = fname
         del fname
@@ -679,6 +697,7 @@ def get_book(isbn):
     """Get the url info"""
     tabel = Isbn2Bib(isbn)
     tabel.set_bibtex()
+
 
 SOURCE = sys.argv[1].split('.', maxsplit=1)[0]
 ARXIV, JOURNALS, BOOK = [], [], []
