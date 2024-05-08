@@ -455,7 +455,8 @@ class Jour2Bib:
         """set the dict by updating the bibtex"""
         self.bib: dict = self.string_dict_to_dict(self.html)
 
-        self.bib_text: dict[str, str] = {}
+        self.bib_text: dict[str, str] = self.bib.copy()
+        self.bib_text.pop('entry_type')
 
         self.bib_text['author'] = self.get_authors()
 
@@ -464,7 +465,7 @@ class Jour2Bib:
         # self.check_bib()
         if self.strudel.split("@")[1] == 'article':
             self.bib_text['journal'] = self.get_hyper_journal()
-            self.bib_text['title'] = self.bib_text['title'] + '},'
+            self.bib_text['title'] = self.bib_text['title']
         elif self.strudel.split("@")[1] == 'misc':
             self.bib_text['note'] = self.get_hyper_journal()
             self.bib_text['title'] = self.bib_text['title'] + ','
@@ -472,7 +473,7 @@ class Jour2Bib:
             self.bib_text['publisher'] = self.get_hyper_journal()
         if 'year' in exist_keys:
             year: str = re.sub('{|}|,|"', '', self.bib['year'])
-            self.bib_text['year'] = f'{{{year}}},'
+            self.bib_text['year'] = f'{year}'
         else:
             print_stderr(f'No "year" for {self.url}')
         if 'month' in exist_keys:
@@ -480,7 +481,7 @@ class Jour2Bib:
         else:
             print_stderr(f'No "month" for {self.url}')
         self.bib_text = \
-            [f'{key} = {self.bib_text[key]}' for key in self.bib_text]
+            [f'{key} = {{{self.bib_text[key]}}},' for key in self.bib_text]
         self.strudel += "{"
         self.bib_text.append("}")
 
@@ -513,12 +514,12 @@ class Jour2Bib:
     def get_title(self) -> list:
         """change capitalization of the title"""
         self.title = self.bib['title']
-        return f'{{{pretty_title(self.title)}'
+        return f'{pretty_title(self.title)}'
 
     def get_authors(self) -> list:
         """change the format of authors names"""
         authors = self.bib['author']
-        return f'{{{do_firstname(authors)}}},'
+        return f'{do_firstname(authors)}'
 
     def get_hyper_journal(self) -> str:
         """hyperref the journals"""
@@ -528,9 +529,9 @@ class Jour2Bib:
         self.url = f"https://doi.org/{self.doi}"
         if self.strudel.split("@")[1] == 'article':
             self.journal = self.bib['journal']
-            return f"{{\href{{{self.url}}}{{{self.journal}}}}},"
+            return f"\href{{{self.url}}}{self.journal}"
         self.journal = self.bib['publisher'][:-1]
-        return f"{{\href{{{self.url}}}{{{self.journal}}}}},"
+        return f"\href{{{self.url}}}{self.journal}"
 
     def titlecase(self, string_in: str) -> str:
         """capitalize the first letter of the month"""
