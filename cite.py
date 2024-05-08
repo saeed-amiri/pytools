@@ -152,11 +152,8 @@ def do_firstname(authors,
         """
         and_count = authors.count(' and ')
         if and_count > 1:
-            print_stderr(f'1: -> {authors}')
             authors = re.sub(' and', '{,}', authors, count=and_count-1)
-            print_stderr(f'2: -> {authors}')
             authors = re.sub(' and', '{,} and', authors, count=1)
-            print_stderr(f'3: -> {authors}')
 
         return authors
 
