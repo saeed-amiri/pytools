@@ -79,81 +79,115 @@ if len(sys.argv) == 1:
     sys.exit(__doc__)
 
 
-def do_and(authors) -> list:
-    """counting number of authors, seperated by "and" and replace them
-    with "{,}" so latex will print them correctly
-    if there is mpre then 1, replace them with "{,}" so latex will
-    print them
-    """
-    and_count = authors.count(' and ')
-    if and_count > 1:
-        authors = re.sub(' and', '{,}', authors, count=and_count-1)
-        authors = re.sub(' and', '{,} and', authors, count=1)
-    return authors
-
-
 def do_firstname(authors,
                  arxiv=None
                  ) -> list:
     """remove initat and trailing characters, also considering the
     umlats: \u00C0-\u017F
     """
+    def convert_name(authors):
+        """Convert a single name from 'Lastname, Firstname' to
+        'Firstname Lastname'"""
+        converted_names = []
+        for name in authors:
+            # Split on the comma and strip any extra whitespace
+            last_name, first_name = name.split(', ')
+            # Swap positions and create 'Firstname Lastname'
+            full_name = f"{first_name} {last_name}"
+            converted_names.append(full_name)
+        return converted_names
+
+    def process_inorder_names(authors):
+        # removing the "author" and/or trailing "c"
+        authors = re.sub('(author| c ,)', '', authors)
+
+        # make a list of authors' names
+        authors = " ".join(authors.split())
+
+        # dropping the sapacces from the list
+        authors = re.sub(', ', ',', authors).split(',')
+        authors = [author.strip() for author in authors if author]
+        return authors
+
+    def make_name_list(authors):
+        """doing "FirstName MidelName(s) LastName" ->
+        "F. M1. M2. ... LastName"
+        """
+        names = []
+        for name in authors:
+            author_name = []
+            name = re.sub(r"^'|'$", '', name)
+            # split the name
+            all_name = name.split(" ")
+            # keep the first letter of all-name beside lastName
+            for part in all_name[:-1]:
+                if part[0].isupper():
+                    author_name.append(f'{part[0]}.')
+                else:
+                    author_name.append(f' {part}')
+            # apoend the lastName
+            if all_name[-1].isupper():
+                all_name[-1] = all_name[-1].title()
+            author_name.append(f' {all_name[-1]}')
+            # append the author_name to the others
+            names.append("".join(author_name))
+        return names
+
+    def do_spcial_char(authors):
+        """convert the special characters to latex"""
+        spcial_char_map = {ord('ä'): '\\"a',
+                           ord('ü'): '\\"u',
+                           ord('ö'): '\\"o',
+                           ord('ß'): '\ss'}
+        return authors.translate(spcial_char_map)
+
+    def do_and(authors) -> list:
+        """counting number of authors, seperated by "and" and replace them
+        with "{,}" so latex will print them correctly
+        if there is mpre then 1, replace them with "{,}" so latex will
+        print them
+        """
+        and_count = authors.count(' and ')
+        if and_count > 1:
+            authors = re.sub(' and', '{,}', authors, count=and_count-1)
+            authors = re.sub(' and', '{,} and', authors, count=1)
+        return authors
+
+    # removing the sapacces from the list
     spaces: str = '{\hspace{0.167em}}'
     if spaces in authors:
         authors = authors.replace(spaces, " ")
     comma = authors.count(',') - 1
+    ands = authors.count(' and ')
+
     # authors = re.sub('[^\u00C0-\u017FA-Za-z0-9,]+', ' ', authors)
-    if arxiv is None:
+    if arxiv is None and authors.startswith('['):
         authors = authors[1:-2]
 
     # remove "and" and "author" and the trailing "c" from the list for
     # now then will put them back
     # baring the names: rmoving "and"
-    if comma > 0:
-        authors = re.sub('( and| and )', '', authors)
-    if comma == 0:
-        authors = re.sub('( and| and )', ',', authors)
+    if ands > 0:
+        authors = authors.split(' and ')
+        authors = convert_name(authors)
+    else:
+        if comma > 0:
+            authors = re.sub('( and| and )', '', authors)
+        if comma == 0:
+            authors = re.sub('( and| and )', ',', authors)
 
-    # removing the "author" and/or trailing "c"
-    authors = re.sub('(author| c ,)', '', authors)
+        authors = process_inorder_names(authors)
 
-    # make a list of authors' names
-    authors = " ".join(authors.split())
-
-    # dropping the sapacces from the list
-    authors = re.sub(', ', ',', authors).split(',')
-    authors = [author.strip() for author in authors if author]
-
-    # doing "FirstName MidelName(s) LastName" -> "F. M1. M2. ... LastName"
-    names = []
-    for name in authors:
-        author_name = []
-        name = re.sub(r"^'|'$", '', name)
-        # split the name
-        all_name = name.split(" ")
-        # keep the first letter of all-name beside lastName
-        for part in all_name[:-1]:
-            if part[0].isupper():
-                author_name.append(f'{part[0]}.')
-            else:
-                author_name.append(f' {part}')
-        # apoend the lastName
-        if all_name[-1].isupper():
-            all_name[-1] = all_name[-1].title()
-        author_name.append(f' {all_name[-1]}')
-        # append the author_name to the others
-        names.append("".join(author_name))
+    names = make_name_list(authors)
 
     if len(names) == 1:
         authors = f'{names[0]}'
     # joining the name of the authors, if more then 1 by and
     elif len(names) >= 2:
         authors = f'{" and ".join(names)}'
-    spcial_char_map = {ord('ä'): '\\"a',
-                       ord('ü'): '\\"u',
-                       ord('ö'): '\\"o',
-                       ord('ß'): '\ss'}
-    authors = authors.translate(spcial_char_map)
+
+    authors = do_spcial_char(authors)
+
     return do_and(authors)
 
 
@@ -385,6 +419,7 @@ class Jour2Bib:
     """
     # pylint: disable=too-many-instance-attributes
     bib: dict[str, str]
+    bib_text: list
     doi: str
     title: str
     bibtex: str
@@ -415,10 +450,11 @@ class Jour2Bib:
         self.bib: dict = self.string_dict_to_dict(self.html)
 
         self.bib_text: dict[str, str] = {}
-
+        print_stderr(self.bib['author'])
         self.bib_text['author'] = self.get_authors()
+        print_stderr(self.bib_text['author'])
         self.bib_text['title'] = self.get_title()
-
+        # self.check_bib()
         if self.strudel.split("@")[1] == 'article':
             self.bib_text['journal'] = self.get_hyper_journal()
         elif self.strudel.split("@")[1] == 'misc':
@@ -490,13 +526,13 @@ class Jour2Bib:
                       lambda mo: mo.group(0).capitalize(), string_in)
 
     def check_bib(self) -> str:
-        """Some papers' bibtex doesnt have title!!!!!!!!!!"""
-        check_list = ['author', 'title']
-        print_stderr(self.bib.keys())
-        for k in check_list:
-            if k not in self.bib.keys():
-                print(f'\n"{k}" is missing for {self.url}\nNot added to'
-                      f' the "bib" file',
+        """Check if the required fields are present in the bib entry."""
+        required_fields = ['author', 'title']
+
+        for field in required_fields:
+            if field not in self.bib:
+                print(f'\n"{field}" is missing for {self.url}\nNot added'
+                      f' to the "bib" file:\n{self.bib.keys()}\n',
                       file=sys.stderr)
 
     def _make_dictionary(self, cite) -> dict:
@@ -551,13 +587,14 @@ class Book2Bib:
     def update_bib(self) -> list:
         """set the dict"""
         bib: dict[str, str] = self.make_dic()
-        bib['author'] = self.get_authors()
-        bib['title'] = self.get_title()
-        bib['publisher'] = f"{self.bib['publisher']},"
-        bib['note'] = f'{{ISBN: {self.isbn}}},'
-        bib = [f'{key} = {self.bib[key]}' for key in self.bib]
-        bib.append("}")
-        return bib
+        bib_tex: dict[str, str] = {}
+        bib_tex['author'] = self.get_authors()
+        bib_tex['title'] = self.get_title()
+        bib_tex['publisher'] = f"{bib['publisher']},"
+        bib_tex['note'] = f'{{ISBN: {self.isbn}}},'
+        bib_tex = [f'{key} = {bib[key]}' for key in bib]
+        bib_tex.append("}")
+        return bib_tex
 
     def set_bibtex(self) -> str:
         """write the bibtex"""
