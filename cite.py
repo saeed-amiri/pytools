@@ -412,23 +412,7 @@ class Jour2Bib:
 
     def update_bib(self) -> None:
         """set the dict by updating the bibtex"""
-        try:
-            bib_str = str(self.html)
-            entry_type_key, entries_str = bib_str.split(',', 1)
-            entry_type_key = entry_type_key.strip()
-
-            # Find all key-value pairs
-            entries = re.findall(r'(\w+)=\{([^}]+)\}', entries_str)
-
-            bib_dict = \
-                {'entry_type': entry_type_key[:entry_type_key.index('{')]}
-            bib_dict.update({key: value.strip() for key, value in entries})
-
-            # Display the result
-            self.bib = bib_dict
-        except Exception:
-            print(f'There is something wrong with the entery:\n{self.html}\n',
-                  file=sys.stderr)
+        self.bib: dict = self.string_dict_to_dict(self.html)
 
         self.bib_text: dict[str, str] = {}
 
@@ -451,6 +435,26 @@ class Jour2Bib:
             [f'{key} = {self.bib_text[key]}' for key in self.bib_text]
 
         self.bib_text.append("}")
+
+    def string_dict_to_dict(self, bib_str: str) -> dict:
+        """make a dictionary from the bibtex"""
+        try:
+            bib_str = str(self.html)
+            entry_type_key, entries_str = bib_str.split(',', 1)
+            entry_type_key = entry_type_key.strip()
+
+            # Find all key-value pairs
+            entries = re.findall(r'(\w+)=\{([^}]+)\}', entries_str)
+
+            bib_dict = \
+                {'entry_type': entry_type_key[:entry_type_key.index('{')]}
+            bib_dict.update({key: value.strip() for key, value in entries})
+
+            return bib_dict
+        except Exception:
+            print(f'There is something wrong with the entery:\n{self.html}\n',
+                  file=sys.stderr)
+            return {}
 
     def cock_strudel(self) -> str:
         """make "@article" with "doi" as the label for the bibtex"""
