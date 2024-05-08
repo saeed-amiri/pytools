@@ -191,7 +191,7 @@ def do_firstname(authors,
         authors = f'{" and ".join(names)}'
 
     authors = do_spcial_char(authors)
-    if STYLE == 'Harvard':
+    if STYLE != 'Harvard':
         authors = do_and(authors)
 
     return authors
@@ -460,6 +460,7 @@ class Jour2Bib:
         self.bib_text['author'] = self.get_authors()
 
         self.bib_text['title'] = self.get_title()
+        exist_keys: list[str] = [str(item) for item in list(self.bib.keys())]
         # self.check_bib()
         if self.strudel.split("@")[1] == 'article':
             self.bib_text['journal'] = self.get_hyper_journal()
@@ -469,11 +470,15 @@ class Jour2Bib:
             self.bib_text['title'] = self.bib_text['title'] + ','
         else:
             self.bib_text['publisher'] = self.get_hyper_journal()
-        if 'year' in self.bib_text:
-            year: str = re.sub('{|}|,|"', '', self.bib_text['year'])
+        if 'year' in exist_keys:
+            year: str = re.sub('{|}|,|"', '', self.bib['year'])
             self.bib_text['year'] = f'{{{year}}},'
-        if 'month' in self.bib_text:
-            self.bib_text['month'] = self.titlecase(self.bib_text['month'])
+        else:
+            print_stderr(f'No "year" for {self.url}')
+        if 'month' in exist_keys:
+            self.bib_text['month'] = self.titlecase(self.bib['month'])
+        else:
+            print_stderr(f'No "month" for {self.url}')
         self.bib_text = \
             [f'{key} = {self.bib_text[key]}' for key in self.bib_text]
         self.strudel += "{"
@@ -523,7 +528,7 @@ class Jour2Bib:
         self.url = f"https://doi.org/{self.doi}"
         if self.strudel.split("@")[1] == 'article':
             self.journal = self.bib['journal']
-            return f"{{\href{{{self.url}}}{{{self.journal}}}}}"
+            return f"{{\href{{{self.url}}}{{{self.journal}}}}},"
         self.journal = self.bib['publisher'][:-1]
         return f"{{\href{{{self.url}}}{{{self.journal}}}}},"
 
