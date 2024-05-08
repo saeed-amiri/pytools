@@ -523,9 +523,9 @@ class Jour2Bib:
         self.url = f"https://doi.org/{self.doi}"
         if self.strudel.split("@")[1] == 'article':
             self.journal = self.bib['journal']
-            return f"{{\href{{{self.url}}}{self.journal}}}"
+            return f"{{\href{{{self.url}}}{{{self.journal}}}}}"
         self.journal = self.bib['publisher'][:-1]
-        return f"{{\href{{{self.url}}}{self.journal}}},"
+        return f"{{\href{{{self.url}}}{{{self.journal}}}}},"
 
     def titlecase(self, string_in: str) -> str:
         """capitalize the first letter of the month"""
