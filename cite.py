@@ -78,6 +78,8 @@ start = time.perf_counter()
 if len(sys.argv) == 1:
     sys.exit(__doc__)
 
+STYLE: str = 'Harvard'
+
 
 def do_firstname(authors,
                  arxiv=None
@@ -85,6 +87,7 @@ def do_firstname(authors,
     """remove initat and trailing characters, also considering the
     umlats: \u00C0-\u017F
     """
+    # pylint: disable=too-many-statements
     def convert_name(authors):
         """Convert a single name from 'Lastname, Firstname' to
         'Firstname Lastname'"""
@@ -149,8 +152,12 @@ def do_firstname(authors,
         """
         and_count = authors.count(' and ')
         if and_count > 1:
+            print_stderr(f'1: -> {authors}')
             authors = re.sub(' and', '{,}', authors, count=and_count-1)
+            print_stderr(f'2: -> {authors}')
             authors = re.sub(' and', '{,} and', authors, count=1)
+            print_stderr(f'3: -> {authors}')
+
         return authors
 
     # removing the sapacces from the list
@@ -187,8 +194,10 @@ def do_firstname(authors,
         authors = f'{" and ".join(names)}'
 
     authors = do_spcial_char(authors)
+    if STYLE == 'Harvard':
+        authors = do_and(authors)
 
-    return do_and(authors)
+    return authors
 
 
 def pretty_title(title) -> list:
@@ -450,13 +459,14 @@ class Jour2Bib:
         self.bib: dict = self.string_dict_to_dict(self.html)
 
         self.bib_text: dict[str, str] = {}
-        print_stderr(self.bib['author'])
+
         self.bib_text['author'] = self.get_authors()
-        print_stderr(self.bib_text['author'])
+
         self.bib_text['title'] = self.get_title()
         # self.check_bib()
         if self.strudel.split("@")[1] == 'article':
             self.bib_text['journal'] = self.get_hyper_journal()
+            self.bib_text['title'] = self.bib_text['title'] + '},'
         elif self.strudel.split("@")[1] == 'misc':
             self.bib_text['note'] = self.get_hyper_journal()
             self.bib_text['title'] = self.bib_text['title'] + ','
@@ -469,7 +479,7 @@ class Jour2Bib:
             self.bib_text['month'] = self.titlecase(self.bib_text['month'])
         self.bib_text = \
             [f'{key} = {self.bib_text[key]}' for key in self.bib_text]
-
+        self.strudel += "{"
         self.bib_text.append("}")
 
     def string_dict_to_dict(self, bib_str: str) -> dict:
@@ -496,7 +506,7 @@ class Jour2Bib:
         """make "@article" with "doi" as the label for the bibtex"""
         self.doi = re.sub('}', '', self.bib["DOI"])
         # self.paper = lambda paper: expression
-        return f'{self.strudel}{self.doi}'
+        return f'{self.strudel}{self.doi},'
 
     def get_title(self) -> list:
         """change capitalization of the title"""
