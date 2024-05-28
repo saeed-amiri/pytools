@@ -85,6 +85,7 @@ STYLE: str = 'Harvard'
 class Config:
     """configurations"""
     hyper_journal: bool = False
+    print_month_year_fail: bool = False
 
 def do_firstname(authors,
                  arxiv=None
@@ -480,11 +481,11 @@ class Jour2Bib:
         if 'year' in exist_keys:
             year: str = re.sub('{|}|,|"', '', self.bib['year'])
             self.bib_text['year'] = f'{year}'
-        else:
+        elif self.config.print_month_year_fail:
             print_stderr(f'No "year" for {self.url}')
         if 'month' in exist_keys:
             self.bib_text['month'] = self.titlecase(self.bib['month'])
-        else:
+        elif self.config.print_month_year_fail:
             print_stderr(f'No "month" for {self.url}')
         self.bib_text = \
             [f'{key} = {{{self.bib_text[key]}}},' for key in self.bib_text]
