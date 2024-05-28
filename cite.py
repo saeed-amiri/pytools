@@ -66,7 +66,7 @@ import time
 import calendar
 import concurrent.futures
 from contextlib import contextmanager
-
+from dataclasses import dataclass, field
 import requests
 
 # moduals for getting books' bibtex, it is easier then using "request"
@@ -80,6 +80,11 @@ if len(sys.argv) == 1:
 
 STYLE: str = 'Harvard'
 
+
+@dataclass
+class Config:
+    """configurations"""
+    hyper_journal: bool = False
 
 def do_firstname(authors,
                  arxiv=None
@@ -434,6 +439,7 @@ class Jour2Bib:
 
     def __init__(self, url) -> None:
         self.url = url
+        self.config = Config()
         self.make_html(url)
 
     def make_html(self, url: str) -> None:
@@ -527,11 +533,13 @@ class Jour2Bib:
         # its easier to make it!
         self.doi = re.sub('{|}|,|"', "", self.bib['DOI'])
         self.url = f"https://doi.org/{self.doi}"
-        if self.strudel.split("@")[1] == 'article':
-            self.journal = self.bib['journal']
+        if self.config.hyper_journal:
+            if self.strudel.split("@")[1] == 'article':
+                self.journal = self.bib['journal']
+                return f"\href{{{self.url}}}{self.journal}"
+            self.journal = self.bib['publisher'][:-1]
             return f"\href{{{self.url}}}{self.journal}"
-        self.journal = self.bib['publisher'][:-1]
-        return f"\href{{{self.url}}}{self.journal}"
+        return self.bib['journal']
 
     def titlecase(self, string_in: str) -> str:
         """capitalize the first letter of the month"""
