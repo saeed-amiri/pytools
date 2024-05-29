@@ -59,6 +59,7 @@ SAEED AMIRI
 
 # pylint: disable=anomalous-backslash-in-string
 
+import os
 import re
 import sys
 import json
@@ -243,6 +244,13 @@ def open_file(fname, mode):
         sys.exit(f"NO Such a FILE as '{fname}'")
     finally:
         f_read.close()
+
+
+def check_file_exist(fname: str) -> None:
+    """check if the file exist"""
+    if not os.path.exists(fname):
+        sys.exit(f"\n\tNO Such a FILE as '{fname}'\n"
+                 f"\tFirst compile the latex file to produce the `aux` file\n")
 
 
 # first reading the "aux" tex output file
@@ -768,6 +776,8 @@ def get_book(isbn):
 
 SOURCE = sys.argv[1].split('.', maxsplit=1)[0]
 ARXIV, JOURNALS, BOOK = [], [], []
+
+check_file_exist(SOURCE + '.aux')
 
 # pylint: disable=consider-using-with
 if sys.argv[1].split(".")[1] == 'aux':
