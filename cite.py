@@ -779,8 +779,7 @@ elif sys.argv[1].split(".")[1] == 'bib':
     BIB = ReadBib(sys.argv[1])
     ARXIV, JOURNALS, BOOK = BIB.return_list()
     BIBFILE = sys.argv[1]
-    with open(BIBFILE, '+a', encoding='utf8') as F_APPEND:
-        sys.stdout = F_APPEND
+    sys.stdout = open(BIBFILE, '+a', encoding='utf8')
 
 
 AUX = Aux2Url(SOURCE + '.aux')
