@@ -448,6 +448,7 @@ class Jour2Bib:
         self._cit = RequestCite()
         html = self._cit.do_request(url, 'journals').split('\n')
         self.html = [item.strip() for item in html if item][0]
+
         self.strudel = self.html.split("{")[0]
 
     def set_bibtex(self) -> str:
@@ -478,15 +479,18 @@ class Jour2Bib:
             self.bib_text['title'] = self.bib_text['title'] + ','
         else:
             self.bib_text['publisher'] = self.get_hyper_journal()
+
         if 'year' in exist_keys:
             year: str = re.sub('{|}|,|"', '', self.bib['year'])
             self.bib_text['year'] = f'{year}'
         elif self.config.print_month_year_fail:
             print_stderr(f'No "year" for {self.url}')
+
         if 'month' in exist_keys:
             self.bib_text['month'] = self.titlecase(self.bib['month'])
         elif self.config.print_month_year_fail:
             print_stderr(f'No "month" for {self.url}')
+
         self.bib_text = \
             [f'{key} = {{{self.bib_text[key]}}},' for key in self.bib_text]
         self.strudel += "{"
