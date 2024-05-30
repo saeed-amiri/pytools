@@ -333,11 +333,13 @@ class RequestCite:
         """get the response from the server"""
         self.get_header(url, src)
         self.requested = requests.get(url, headers=self.header)
-        if self.requested.ok:
+        try:
             self.requested.encoding = 'utf-8'
             # return the text as a list
             return self.requested.text
-        sys.exit(f'Wrong "{url}" or Busy server')
+        except Exception as err:
+            print_stderr(f"Error: {err}")
+            sys.exit(f'Wrong "{url}" or Busy server')
 
 
 class Arxiv2Bib:
