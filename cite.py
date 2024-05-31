@@ -67,7 +67,7 @@ import time
 import calendar
 import concurrent.futures
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import requests
 
 # moduals for getting books' bibtex, it is easier then using "request"
@@ -87,6 +87,7 @@ class Config:
     """configurations"""
     hyper_journal: bool = False
     print_month_year_fail: bool = False
+
 
 def do_firstname(authors,
                  arxiv=None
@@ -565,9 +566,9 @@ class Jour2Bib:
         """Check if the required fields are present in the bib entry."""
         required_fields = ['author', 'title']
 
-        for field in required_fields:
-            if field not in self.bib:
-                print(f'\n"{field}" is missing for {self.url}\nNot added'
+        for field_i in required_fields:
+            if field_i not in self.bib:
+                print(f'\n"{field_i}" is missing for {self.url}\nNot added'
                       f' to the "bib" file:\n{self.bib.keys()}\n',
                       file=sys.stderr)
 
