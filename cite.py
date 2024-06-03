@@ -464,11 +464,19 @@ class Jour2Bib:
 
     def set_bibtex(self) -> str:
         """print bibtex"""
-        self.update_bib()
-
-        print(self.cock_strudel())
-        for item in self.bib_text:
-            print(f'\t{item}')
+        try:
+            self.update_bib()
+        except Exception as err:
+            print_stderr(f'\n!Unable to update for {self.url} with {err}\n')
+        try:
+            print(self.cock_strudel())
+        except Exception as err:
+            print_stderr(f'\n!Unable to cook for {self.url} with {err}\n')
+        try:
+            for item in self.bib_text:
+                print(f'\t{item}')
+        except Exception as err:
+            print_stderr(f'\n!Unable to append for {self.url} with {err}\n')
 
     def update_bib(self) -> None:
         """set the dict by updating the bibtex"""
