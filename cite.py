@@ -332,8 +332,13 @@ class RequestCite:
 
     def do_request(self, url, src) -> str:
         """get the response from the server"""
+        # pylint: disable=broad-exception-caught
         self.get_header(url, src)
-        self.requested = requests.get(url, headers=self.header)
+        try:
+            self.requested = requests.get(url, headers=self.header, timeout=10)
+        except requests.exceptions.RequestException as err:
+            print_stderr(f"Error: {err}")
+            sys.exit(f'Wrong "{url}" or Busy server')
         try:
             self.requested.encoding = 'utf-8'
             # return the text as a list
@@ -464,6 +469,7 @@ class Jour2Bib:
 
     def set_bibtex(self) -> str:
         """print bibtex"""
+        # pylint: disable=broad-exception-caught
         try:
             self.update_bib()
         except Exception as err:
@@ -517,6 +523,7 @@ class Jour2Bib:
 
     def string_dict_to_dict(self, bib_str: str) -> dict:
         """make a dictionary from the bibtex"""
+        # pylint: disable=broad-exception-caught
         try:
             bib_str = str(self.html)
             entry_type_key, entries_str = bib_str.split(',', 1)
